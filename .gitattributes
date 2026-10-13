@@ -1,0 +1,8 @@
+# 统一 LF：跨平台行尾一致是基准可复现与 CI 首跑绿的前置
+* text=auto eol=lf
+*.png binary
+*.gif binary
+*.jpg binary
+*.ico binary
+*.exe binary
+*.zip binary

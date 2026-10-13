@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+build/
+dist/
+*.spec
+# PyInstaller spec 为交付产物，入仓（上方通配默认吞掉，此处例外放行）
+!tools/*.spec
+
+# 数据库与运行产物
+*.db
+*.sqlite
+output/
+reports/
+*.log
+build-*/
+scan-out*/
+round*.json
+
+# 环境与密钥
+.env
+*.key
+*_private/
+
+# 合成车型档案的本地私有件（不入仓；样本仅留结构与指纹，见 data/README.md §四）
+data/**/_private/
+
+# 系统文件
+Thumbs.db
+Desktop.ini
+.DS_Store
