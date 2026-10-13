@@ -1,0 +1,56 @@
+{
+  "schema_version": "1.0",
+  "standard": {
+    "code": "GB 17761-2018",
+    "title": "电动自行车安全技术规范",
+    "issuer": "国家市场监督管理总局、国家标准化管理委员会",
+    "published": "2018-05-15",
+    "effective": "2019-04-15",
+    "status": "abolished",
+    "supersedes": [],
+    "mandatory": true
+  },
+  "scope": "vehicle",
+  "rules": [
+    {
+      "id": "GB17761-2018-vehicle_mass",
+      "param": "vehicle_mass",
+      "op": "<=",
+      "value": "55",
+      "unit": "kg",
+      "clause": null,
+      "clause_status": "pending",
+      "source": {
+        "kind": "gov_qna",
+        "url": "https://www.gov.cn/zhengce/202501/content_6998231.htm",
+        "retrieved_on": "2026-10-14",
+        "title": "《GB 17761—2024 主要技术内容问答》",
+        "issuer": "工业和信息化部"
+      },
+      "status": "verified",
+      "verified_on": "2026-10-14",
+      "clause_excerpt": "旧版整车质量限值 55 kg（2024 版问答作为放宽前后的对比基线引述）",
+      "notes": "历史车型对照用；来源为 2024 版官方问答对旧版限值的引述。"
+    },
+    {
+      "id": "GB17761-2018-max_design_speed",
+      "param": "max_design_speed",
+      "op": "<=",
+      "value": "25",
+      "unit": "km/h",
+      "clause": null,
+      "clause_status": "pending",
+      "source": {
+        "kind": "gov_qna",
+        "url": "https://www.gov.cn/zhengce/202501/content_6998231.htm",
+        "retrieved_on": "2026-10-14",
+        "title": "《GB 17761—2024 主要技术内容问答》",
+        "issuer": "工业和信息化部"
+      },
+      "status": "verified",
+      "verified_on": "2026-10-14",
+      "clause_excerpt": "最高设计车速不超过 25 km/h（2018 版延续要求）",
+      "notes": "历史车型对照用；限值经 2024 版官方问答对沿用要求的表述核对。"
+    }
+  ]
+}

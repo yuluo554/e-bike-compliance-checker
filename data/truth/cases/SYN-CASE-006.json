@@ -1,0 +1,52 @@
+{
+  "case_id": "SYN-CASE-006",
+  "kind": "boundary_at_limit",
+  "target_param": "vehicle_mass",
+  "profile": {
+    "schema": "ebikecheck.profile/1.0",
+    "profile_id": "SYN-EB-006",
+    "manufacturer": "示例车业（合成）有限公司",
+    "uscc": "90000000SYN0000006X",
+    "model_design_date": "2025-10-01",
+    "params": {
+      "vehicle_mass": {
+        "value": "63.0",
+        "unit": "kg"
+      },
+      "battery_type": {
+        "value": "lead_acid",
+        "unit": ""
+      },
+      "max_design_speed": {
+        "value": "24.9",
+        "unit": "km/h"
+      },
+      "plastic_mass_ratio": {
+        "value": "5.4",
+        "unit": "%"
+      },
+      "over_speed_power_cutoff": {
+        "value": true,
+        "unit": ""
+      },
+      "anti_tamper_battery_pack": {
+        "value": true,
+        "unit": ""
+      },
+      "anti_tamper_controller": {
+        "value": true,
+        "unit": ""
+      },
+      "anti_tamper_speed_limiter": {
+        "value": true,
+        "unit": ""
+      }
+    }
+  },
+  "expect": {
+    "findings": {
+      "vehicle_mass": "compliant"
+    }
+  },
+  "notes": "铅蓄电池车型整车质量 at 限值（compliant）。"
+}

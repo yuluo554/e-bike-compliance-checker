@@ -1,0 +1,71 @@
+{
+  "schema": "ebikecheck.truth/1.0",
+  "generated_by": "tools/gen_synthetic.py",
+  "generator_version": "1.0.0",
+  "seed": 20261014,
+  "synthetic_tag": "SYN",
+  "fake_manufacturer": "示例车业（合成）有限公司",
+  "case_count": 12,
+  "cases": [
+    {
+      "case_id": "SYN-CASE-001",
+      "kind": "boundary_at_limit",
+      "file": "SYN-CASE-001.json"
+    },
+    {
+      "case_id": "SYN-CASE-002",
+      "kind": "boundary_over_limit",
+      "file": "SYN-CASE-002.json"
+    },
+    {
+      "case_id": "SYN-CASE-003",
+      "kind": "boundary_under_limit",
+      "file": "SYN-CASE-003.json"
+    },
+    {
+      "case_id": "SYN-CASE-004",
+      "kind": "boundary_at_limit",
+      "file": "SYN-CASE-004.json"
+    },
+    {
+      "case_id": "SYN-CASE-005",
+      "kind": "boundary_over_limit",
+      "file": "SYN-CASE-005.json"
+    },
+    {
+      "case_id": "SYN-CASE-006",
+      "kind": "boundary_at_limit",
+      "file": "SYN-CASE-006.json"
+    },
+    {
+      "case_id": "SYN-CASE-007",
+      "kind": "boundary_under_limit",
+      "file": "SYN-CASE-007.json"
+    },
+    {
+      "case_id": "SYN-CASE-008",
+      "kind": "boundary_over_limit",
+      "file": "SYN-CASE-008.json"
+    },
+    {
+      "case_id": "SYN-CASE-009",
+      "kind": "missing_param",
+      "file": "SYN-CASE-009.json"
+    },
+    {
+      "case_id": "SYN-CASE-010",
+      "kind": "unit_convert",
+      "file": "SYN-CASE-010.json"
+    },
+    {
+      "case_id": "SYN-CASE-011",
+      "kind": "clean",
+      "file": "SYN-CASE-011.json"
+    },
+    {
+      "case_id": "SYN-CASE-012",
+      "kind": "version_diff",
+      "file": "SYN-CASE-012.json"
+    }
+  ]
+}

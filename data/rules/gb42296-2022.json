@@ -1,0 +1,56 @@
+{
+  "schema_version": "1.0",
+  "standard": {
+    "code": "GB 42296-2022",
+    "title": "电动自行车用充电器安全技术要求",
+    "issuer": "国家市场监督管理总局、国家标准化管理委员会",
+    "published": "2022-12-29",
+    "effective": "2023-07-01",
+    "status": "current",
+    "supersedes": [],
+    "mandatory": true
+  },
+  "scope": "charger",
+  "rules": [
+    {
+      "id": "GB42296-2022-charger-rated-voltage",
+      "param": "charger_rated_input_voltage",
+      "op": "<=",
+      "value": null,
+      "unit": "V",
+      "clause": null,
+      "clause_status": "pending",
+      "source": {
+        "kind": "to_verify",
+        "url": "",
+        "retrieved_on": "2026-10-14",
+        "title": "待经官方渠道核对（未核对不得写入规则包）",
+        "issuer": ""
+      },
+      "status": "pending",
+      "verified_on": "",
+      "clause_excerpt": "",
+      "notes": "充电器额定输入电压等基本安全参数条款数值未取得 → pending、value 留空。"
+    },
+    {
+      "id": "GB42296-2022-charger-protection",
+      "param": "charger_protection_function",
+      "op": "==",
+      "value": null,
+      "unit": "",
+      "clause": null,
+      "clause_status": "pending",
+      "source": {
+        "kind": "to_verify",
+        "url": "",
+        "retrieved_on": "2026-10-14",
+        "title": "待经官方渠道核对（未核对不得写入规则包）",
+        "issuer": ""
+      },
+      "status": "pending",
+      "verified_on": "",
+      "clause_excerpt": "",
+      "notes": "保护功能要求为定性/试验方法条款 → pending，不入参数化核查（首期范围外）。"
+    }
+  ]
+}

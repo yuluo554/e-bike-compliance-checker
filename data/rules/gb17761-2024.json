@@ -1,0 +1,230 @@
+{
+  "schema_version": "1.0",
+  "standard": {
+    "code": "GB 17761-2024",
+    "title": "电动自行车安全技术规范",
+    "issuer": "国家市场监督管理总局、国家标准化管理委员会",
+    "published": "2024-12-31",
+    "effective": "2025-09-01",
+    "status": "current",
+    "supersedes": [
+      "GB 17761-2018"
+    ],
+    "mandatory": true
+  },
+  "scope": "vehicle",
+  "rules": [
+    {
+      "id": "GB17761-2024-max_design_speed",
+      "param": "max_design_speed",
+      "op": "<=",
+      "value": "25",
+      "unit": "km/h",
+      "clause": null,
+      "clause_status": "pending",
+      "source": {
+        "kind": "gov_qna",
+        "url": "https://www.gov.cn/zhengce/202501/content_6998231.htm",
+        "retrieved_on": "2026-10-14",
+        "title": "《GB 17761—2024 主要技术内容问答》",
+        "issuer": "工业和信息化部"
+      },
+      "status": "verified",
+      "verified_on": "2026-10-14",
+      "clause_excerpt": "最高设计车速不得超过 25 km/h",
+      "notes": "数值经 gov.cn 官方问答逐字核对；条款号待以正式标准文本补录。"
+    },
+    {
+      "id": "GB17761-2024-over_speed_power_cutoff",
+      "param": "over_speed_power_cutoff",
+      "op": "==",
+      "value": "true",
+      "unit": "",
+      "clause": null,
+      "clause_status": "pending",
+      "source": {
+        "kind": "gov_qna",
+        "url": "https://www.gov.cn/zhengce/202501/content_6998231.htm",
+        "retrieved_on": "2026-10-14",
+        "title": "《GB 17761—2024 主要技术内容问答》",
+        "issuer": "工业和信息化部"
+      },
+      "status": "verified",
+      "verified_on": "2026-10-14",
+      "clause_excerpt": "超过 25 km/h 时电动机应停止提供动力输出",
+      "notes": "新增要求；以布尔参数承载（具备该功能为 true）。"
+    },
+    {
+      "id": "GB17761-2024-vehicle_mass-lead-acid",
+      "param": "vehicle_mass",
+      "op": "<=",
+      "value": "63",
+      "unit": "kg",
+      "clause": null,
+      "clause_status": "pending",
+      "applies_if": {
+        "param": "battery_type",
+        "op": "==",
+        "value": "lead_acid"
+      },
+      "source": {
+        "kind": "gov_qna",
+        "url": "https://www.gov.cn/zhengce/202501/content_6998231.htm",
+        "retrieved_on": "2026-10-14",
+        "title": "《GB 17761—2024 主要技术内容问答》",
+        "issuer": "工业和信息化部"
+      },
+      "status": "verified",
+      "verified_on": "2026-10-14",
+      "clause_excerpt": "将铅蓄电池车型的重量限值放宽至 63 kg",
+      "notes": "仅适用铅蓄电池车型；其他电池类型由 vehicle_mass-other 约束。"
+    },
+    {
+      "id": "GB17761-2024-vehicle_mass-other",
+      "param": "vehicle_mass",
+      "op": "<=",
+      "value": null,
+      "unit": "kg",
+      "clause": null,
+      "clause_status": "pending",
+      "applies_if": {
+        "not": {
+          "param": "battery_type",
+          "op": "==",
+          "value": "lead_acid"
+        }
+      },
+      "source": {
+        "kind": "to_verify",
+        "url": "",
+        "retrieved_on": "2026-10-14",
+        "title": "待经官方渠道核对（未核对不得写入规则包）",
+        "issuer": ""
+      },
+      "status": "pending",
+      "verified_on": "",
+      "clause_excerpt": "",
+      "notes": "非铅蓄电池车型的质量限值未经官方问答直接确认（问答仅述铅蓄电池车型放宽至 63 kg，其余车型沿用旧值属推断）→ 保持 pending、value 留空，不进入核查路径。"
+    },
+    {
+      "id": "GB17761-2024-plastic_mass_ratio",
+      "param": "plastic_mass_ratio",
+      "op": "<=",
+      "value": "5.5",
+      "unit": "%",
+      "clause": null,
+      "clause_status": "pending",
+      "source": {
+        "kind": "gov_qna",
+        "url": "https://www.gov.cn/zhengce/202501/content_6998231.htm",
+        "retrieved_on": "2026-10-14",
+        "title": "《GB 17761—2024 主要技术内容问答》",
+        "issuer": "工业和信息化部"
+      },
+      "status": "verified",
+      "verified_on": "2026-10-14",
+      "clause_excerpt": "电动自行车使用的塑料的总质量不应超过整车质量的 5.5%",
+      "notes": "新增要求。"
+    },
+    {
+      "id": "GB17761-2024-nominal_voltage",
+      "param": "nominal_voltage",
+      "op": "<=",
+      "value": null,
+      "unit": "V",
+      "clause": null,
+      "clause_status": "pending",
+      "source": {
+        "kind": "to_verify",
+        "url": "",
+        "retrieved_on": "2026-10-14",
+        "title": "待经官方渠道核对（未核对不得写入规则包）",
+        "issuer": ""
+      },
+      "status": "pending",
+      "verified_on": "",
+      "clause_excerpt": "",
+      "notes": "官方问答未列明蓄电池标称电压数值 → pending、value 留空，不得凭记忆填数。"
+    },
+    {
+      "id": "GB17761-2024-motor_rated_power",
+      "param": "motor_rated_power",
+      "op": "<=",
+      "value": null,
+      "unit": "W",
+      "clause": null,
+      "clause_status": "pending",
+      "source": {
+        "kind": "to_verify",
+        "url": "",
+        "retrieved_on": "2026-10-14",
+        "title": "待经官方渠道核对（未核对不得写入规则包）",
+        "issuer": ""
+      },
+      "status": "pending",
+      "verified_on": "",
+      "clause_excerpt": "",
+      "notes": "官方问答未列明电动机额定功率数值 → pending、value 留空。"
+    },
+    {
+      "id": "GB17761-2024-anti_tamper-battery",
+      "param": "anti_tamper_battery_pack",
+      "op": "==",
+      "value": "true",
+      "unit": "",
+      "clause": null,
+      "clause_status": "pending",
+      "source": {
+        "kind": "gov_qna",
+        "url": "https://www.gov.cn/zhengce/202501/content_6998231.htm",
+        "retrieved_on": "2026-10-14",
+        "title": "《GB 17761—2024 主要技术内容问答》",
+        "issuer": "工业和信息化部"
+      },
+      "status": "verified",
+      "verified_on": "2026-10-14",
+      "clause_excerpt": "电池组不得预留扩展车载电池接口或线路",
+      "notes": "防篡改三方面之一；布尔参数（设计满足为 true）。"
+    },
+    {
+      "id": "GB17761-2024-anti_tamper-controller",
+      "param": "anti_tamper_controller",
+      "op": "==",
+      "value": "true",
+      "unit": "",
+      "clause": null,
+      "clause_status": "pending",
+      "source": {
+        "kind": "gov_qna",
+        "url": "https://www.gov.cn/zhengce/202501/content_6998231.htm",
+        "retrieved_on": "2026-10-14",
+        "title": "《GB 17761—2024 主要技术内容问答》",
+        "issuer": "工业和信息化部"
+      },
+      "status": "verified",
+      "verified_on": "2026-10-14",
+      "clause_excerpt": "控制器不得剪线跳线改装、不得兼容多种输入电压",
+      "notes": "防篡改三方面之一。"
+    },
+    {
+      "id": "GB17761-2024-anti_tamper-speed_limiter",
+      "param": "anti_tamper_speed_limiter",
+      "op": "==",
+      "value": "true",
+      "unit": "",
+      "clause": null,
+      "clause_status": "pending",
+      "source": {
+        "kind": "gov_qna",
+        "url": "https://www.gov.cn/zhengce/202501/content_6998231.htm",
+        "retrieved_on": "2026-10-14",
+        "title": "《GB 17761—2024 主要技术内容问答》",
+        "issuer": "工业和信息化部"
+      },
+      "status": "verified",
+      "verified_on": "2026-10-14",
+      "clause_excerpt": "限速器不得具备修改限速值功能",
+      "notes": "防篡改三方面之一。"
+    }
+  ]
+}

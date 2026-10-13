@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "e-bike-compliance-checker"
+version = "0.1.0"
+description = "电动自行车合规核查工作台（GB 17761—2024 双版本规则集 · 整车/蓄电池/充电器三维限值矩阵 · 批量对账 · 证据指纹）"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [{ name = "yuluo554" }]
+keywords = ["compliance", "gb-standards", "electric-bicycle", "ruleset", "offline"]
+classifiers = [
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.12",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: Microsoft :: Windows",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "pyyaml>=6"]
+report = []
+gui = [
+  "PySide6>=6.5,<6.7; python_version < '3.9'",
+  "PySide6>=6.5; python_version >= '3.9'",
+]
+build = ["pyinstaller>=6", "setuptools<81"]
+
+[project.scripts]
+ebikecheck = "ebikecheck.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/yuluo554/e-bike-compliance-checker"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

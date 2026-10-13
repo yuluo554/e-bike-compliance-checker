@@ -20,6 +20,9 @@ reports/
 build-*/
 scan-out*/
 round*.json
+# 验证期草稿一律写此处（别写 /tmp：Git Bash 的 /tmp 与 Windows Python 不通）
+.tmp/
+*.bak
 
 # 环境与密钥
 .env
