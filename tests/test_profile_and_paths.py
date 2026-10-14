@@ -201,12 +201,52 @@ def test_result_carries_source_blocks(data_dir, written_profile):
 
 
 def test_excluded_rules_are_reported_in_result(data_dir, written_profile):
-    from ebikecheck import service
+    """门控可见性（机制断言）：``pending`` 规则必须出现在 ``excluded_rules`` 中。
 
-    path = written_profile({"max_design_speed": param("20", "km/h")})
-    result = service.check_profile(path, data_dir)
-    assert result.excluded_rules
-    assert all(item.status == "pending" for item in result.excluded_rules)
+    M1 后车辆册已全部转 ``verified``，故用门控**机制**（内存构造一个含 pending
+    条目的规则集）断言，不依赖某一分册恰好还有 pending。
+    """
+    from ebikecheck.engine import rules as rules_mod
+
+    payload = {
+        "schema_version": "1.0",
+        "standard": {
+            "code": "GB 17761-2024",
+            "title": "t",
+            "published": "2024-12-31",
+            "effective": "2025-09-01",
+            "status": "current",
+        },
+        "scope": "vehicle",
+        "rules": [
+            {
+                "id": "OK-1",
+                "param": "max_design_speed",
+                "op": "<=",
+                "value": "25",
+                "unit": "km/h",
+                "clause": "6.1.1.1",
+                "clause_status": "verified",
+                "source": {"kind": "to_verify", "retrieved_on": "2026-10-14"},
+                "status": "verified",
+            },
+            {
+                "id": "WAIT-1",
+                "param": "some_pending_param",
+                "op": "<=",
+                "value": None,
+                "unit": "kg",
+                "clause": None,
+                "clause_status": "pending",
+                "source": {"kind": "to_verify", "retrieved_on": "2026-10-14"},
+                "status": "pending",
+            },
+        ],
+    }
+    ruleset = rules_mod.load_ruleset_file_from_dict(payload, "probe.json")
+    assert [item.rule_id for item in ruleset.excluded] == ["WAIT-1"]
+    assert all(item.status == "pending" for item in ruleset.excluded)
+    assert {rule.id for rule in ruleset.rules} == {"OK-1"}
 
 
 def test_profile_sha256_recorded(data_dir, written_profile):

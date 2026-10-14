@@ -94,6 +94,41 @@ def _p(value, unit):
     return {"value": value, "unit": unit}
 
 
+#: 布尔/枚举通路的合规取值（``op == "=="`` 时规则自身的 value 即合规值）。
+_BOOL_TOKENS = {"true": True, "false": False}
+
+
+def _compliant_value(op, limit):
+    """由规则的 op 与限值推出一个**合规**的档案取值（不硬编码限值）。"""
+    if op == "==":
+        token = str(limit["value"])
+        if token in _BOOL_TOKENS:
+            return _BOOL_TOKENS[token], ""
+        return token, limit["unit"]
+    if op == ">=":
+        return _over(limit), limit["unit"]
+    # 默认按上界处理（"<=" 与 "<"）。
+    return _under(limit), limit["unit"]
+
+
+def _fill_compliant(params, view, exclude=()):
+    """把该版本**全部已核对参数**补成合规值（保持"干净档案真的干净"）。
+
+    规则包随里程碑增长（M1 新增标称电压、额定功率等），若不补齐，"全参数达标"
+    的档案会因新参数缺失被判 ``not_provided`` —— 那是**用例过期**而非引擎缺陷。
+    ``exclude`` 供"故意缺参数"的用例声明其省略项。
+    """
+    filled = dict(params)
+    for param_name, limit in view.items():
+        if param_name in filled or param_name in exclude:
+            continue
+        if limit.get("value") is None:
+            continue
+        value, unit = _compliant_value(limit.get("op", "<="), limit)
+        filled[param_name] = _p(value, unit)
+    return filled
+
+
 def build_cases(rulesets):
     """构造全部用例。
 
@@ -325,28 +360,21 @@ def build_cases(rulesets):
 
     # ---- 干净档案：全参数达标 → 应零命中 ----
     seq += 1
+    clean_params = _fill_compliant(
+        {
+            P_BATTERY: _p("lead_acid", ""),
+        },
+        {key: value for key, value in limb.items() if key != P_BATTERY},
+    )
     cases.append(
         {
             "case_id": "SYN-CASE-{0:03d}".format(seq),
             "kind": KIND_CLEAN,
-            "profile": _profile(
-                seq,
-                "2025-10-01",
-                {
-                    P_SPEED: _p(_under(speed_limit) if speed_limit else "20", "km/h"),
-                    P_MASS: _p(_under(lead) if lead else "50", "kg"),
-                    P_BATTERY: _p("lead_acid", ""),
-                    P_PLASTIC: _p(_under(plastic_limit) if plastic_limit else "1.0", "%"),
-                    P_CUTOFF: _p(True, ""),
-                    P_AT_BATTERY: _p(True, ""),
-                    P_AT_CONTROLLER: _p(True, ""),
-                    P_AT_LIMITER: _p(True, ""),
-                },
-            ),
+            "profile": _profile(seq, "2025-10-01", clean_params),
             "expect": {"findings": {}},
             "expect_findings": [],
             "expect_overall": "compliant",
-            "notes": "全参数达标 → 检出越限数必须为 0（误报对照集）。",
+            "notes": "全参数达标 → 检出越限数必须为 0（误报对照集；参数集随规则包增长自动补齐）。",
         }
     )
 

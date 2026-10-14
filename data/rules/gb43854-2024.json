@@ -21,16 +21,16 @@
       "clause": null,
       "clause_status": "pending",
       "source": {
-        "kind": "to_verify",
-        "url": "",
+        "kind": "standard_text",
+        "url": "https://openstd.samr.gov.cn/bzgk/std/showGb?type=online&hcno=E14253B5634B9F3E9D243E27E1060A0C",
         "retrieved_on": "2026-10-14",
-        "title": "待经官方渠道核对（未核对不得写入规则包）",
-        "issuer": ""
+        "title": "国家标准全文公开系统 GB 43854—2024《电动自行车用锂离子蓄电池安全技术规范》全文（在线预览页图）",
+        "issuer": "国家市场监督管理总局、国家标准化管理委员会"
       },
       "status": "pending",
       "verified_on": "",
       "clause_excerpt": "",
-      "notes": "本标准适用于锂离子蓄电池（适用范围的元数据已知）；但可参数化条款的完整数值与条款号未取得 → pending、value 留空。"
+      "notes": "GB 43854—2024 第 1 章范围规定适用于符合 GB 17761 规定的电动自行车用锂离子蓄电池单体电池和电池组。“电池种类”属适用范围标识而非限值参数 → 首期不建数值条目，保持 pending、value 留空。"
     },
     {
       "id": "GB43854-2024-battery-output-voltage",
@@ -41,16 +41,16 @@
       "clause": null,
       "clause_status": "pending",
       "source": {
-        "kind": "to_verify",
-        "url": "",
+        "kind": "standard_text",
+        "url": "https://openstd.samr.gov.cn/bzgk/std/showGb?type=online&hcno=E14253B5634B9F3E9D243E27E1060A0C",
         "retrieved_on": "2026-10-14",
-        "title": "待经官方渠道核对（未核对不得写入规则包）",
-        "issuer": ""
+        "title": "国家标准全文公开系统 GB 43854—2024《电动自行车用锂离子蓄电池安全技术规范》全文（在线预览页图）",
+        "issuer": "国家市场监督管理总局、国家标准化管理委员会"
       },
       "status": "pending",
       "verified_on": "",
       "clause_excerpt": "",
-      "notes": "输出电压限值条款数值未取得 → pending、value 留空。"
+      "notes": "已以 GB 43854—2024 全文核对：该标准通篇为型式试验安全要求（过充/过放/外部短路/挤压/振动/热扩散等“不起火、不爆炸”类判据与绝缘电阻等试验值），未设电池组输出电压的固定数值限值——该指标由 GB 17761—2024 6.3.5 规定（另建条目）→ 首期不参数化，保持 pending、value 留空。"
     }
   ]
 }

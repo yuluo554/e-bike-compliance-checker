@@ -155,13 +155,53 @@ def suite_boundary(data_dir: str) -> Tuple[int, int, List[str]]:
 
 
 def _states_for(data_dir, version_key, rule, value, unit, applies_if):
-    """构造只含该参数的档案并取该参数的结论集合。"""
+    """构造只含该参数的档案并取该参数的结论集合。
+
+    条件规则要构造出**条件为真**的档案，否则边界断言打在 ``not_applicable`` 上
+    （如 ``vehicle_mass-other`` 的条件是"非铅蓄电池"，固定给 ``lead_acid`` 必不适用）。
+    这里从 ``applies_if`` 引用的参数出发，**逐个候选值试解**，取第一个使条件为真的
+    构造 —— 不针对具体规则 id 写死，新增条件规则自动适用。
+    """
     params = {rule.param: {"value": str(value), "unit": unit}}
     if applies_if is not None:
-        # 条件规则的边界算术用"条件满足"的构造（本套件不验条件语义）。
-        params["battery_type"] = {"value": "lead_acid", "unit": ""}
+        params.update(_satisfying_condition_params(applies_if))
     result = _check_profile_dict({"params": params}, data_dir, version_key)
     return [f.state for f in result.findings if f.param == rule.param]
+
+
+#: 条件参数候选值（枚举/布尔通路的构造用；判定语义不依赖它，仅用于"造出条件为真"）。
+_CONDITION_CANDIDATES = ("lead_acid", "lithium_ion", "true", "false")
+
+
+def _satisfying_condition_params(applies_if) -> Dict[str, Any]:
+    """求一组使 ``applies_if`` 为真的参数构造（小候选空间穷举）。"""
+    from .engine.rules import eval_applies_if
+
+    names: List[str] = []
+    _collect_condition_params(applies_if, names)
+    assignment: Dict[str, Any] = {}
+    for name in names:
+        for candidate in _CONDITION_CANDIDATES:
+            trial = dict(assignment)
+            trial[name] = {"value": candidate, "unit": ""}
+            if eval_applies_if(applies_if, trial) is True:
+                assignment = trial
+                break
+    return assignment
+
+
+def _collect_condition_params(expr, out: List[str]) -> None:
+    if not isinstance(expr, dict):
+        return
+    if "param" in expr:
+        if expr["param"] not in out:
+            out.append(expr["param"])
+        return
+    for key in ("all", "any"):
+        for item in expr.get(key, []) or []:
+            _collect_condition_params(item, out)
+    if "not" in expr:
+        _collect_condition_params(expr["not"], out)
 
 
 def suite_synthetic(data_dir: str) -> Tuple[int, int, List[str]]:

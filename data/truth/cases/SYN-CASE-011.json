@@ -8,25 +8,33 @@
     "uscc": "90000000SYN0000011X",
     "model_design_date": "2025-10-01",
     "params": {
+      "battery_type": {
+        "value": "lead_acid",
+        "unit": ""
+      },
       "max_design_speed": {
         "value": "24.9",
         "unit": "km/h"
+      },
+      "over_speed_power_cutoff": {
+        "value": true,
+        "unit": ""
       },
       "vehicle_mass": {
         "value": "62.9",
         "unit": "kg"
       },
-      "battery_type": {
-        "value": "lead_acid",
-        "unit": ""
-      },
       "plastic_mass_ratio": {
         "value": "5.4",
         "unit": "%"
       },
-      "over_speed_power_cutoff": {
-        "value": true,
-        "unit": ""
+      "nominal_voltage": {
+        "value": "47.9",
+        "unit": "V"
+      },
+      "motor_rated_power": {
+        "value": "399",
+        "unit": "W"
       },
       "anti_tamper_battery_pack": {
         "value": true,
@@ -47,5 +55,5 @@
   },
   "expect_findings": [],
   "expect_overall": "compliant",
-  "notes": "全参数达标 → 检出越限数必须为 0（误报对照集）。"
+  "notes": "全参数达标 → 检出越限数必须为 0（误报对照集；参数集随规则包增长自动补齐）。"
 }

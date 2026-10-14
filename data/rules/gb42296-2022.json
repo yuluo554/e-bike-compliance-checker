@@ -13,6 +13,26 @@
   "scope": "charger",
   "rules": [
     {
+      "id": "GB42296-2022-charger-no-load-output-voltage",
+      "param": "charger_no_load_output_voltage",
+      "op": "<=",
+      "value": "42.4",
+      "unit": "V",
+      "clause": "5.5.4",
+      "clause_status": "verified",
+      "source": {
+        "kind": "standard_text",
+        "url": "https://openstd.samr.gov.cn/bzgk/std/showGb?type=online&hcno=BC0D9809C45954F590D4CFDF19EAFF90",
+        "retrieved_on": "2026-10-14",
+        "title": "国家标准全文公开系统 GB 42296—2022《电动自行车用充电器安全技术要求》全文（在线预览页图）",
+        "issuer": "国家市场监督管理总局、国家标准化管理委员会"
+      },
+      "status": "verified",
+      "verified_on": "2026-10-14",
+      "clause_excerpt": "充电器空载输出电压有效值，不应高于 42.4 V。",
+      "notes": "M1 新建：GB 42296—2022 输出接口安全性条款中的可参数化数值限值；条款号与数值以正式标准全文 5.5.4 核对。"
+    },
+    {
       "id": "GB42296-2022-charger-rated-voltage",
       "param": "charger_rated_input_voltage",
       "op": "<=",
@@ -21,16 +41,16 @@
       "clause": null,
       "clause_status": "pending",
       "source": {
-        "kind": "to_verify",
-        "url": "",
+        "kind": "standard_text",
+        "url": "https://openstd.samr.gov.cn/bzgk/std/showGb?type=online&hcno=BC0D9809C45954F590D4CFDF19EAFF90",
         "retrieved_on": "2026-10-14",
-        "title": "待经官方渠道核对（未核对不得写入规则包）",
-        "issuer": ""
+        "title": "国家标准全文公开系统 GB 42296—2022《电动自行车用充电器安全技术要求》全文（在线预览页图）",
+        "issuer": "国家市场监督管理总局、国家标准化管理委员会"
       },
       "status": "pending",
       "verified_on": "",
       "clause_excerpt": "",
-      "notes": "充电器额定输入电压等基本安全参数条款数值未取得 → pending、value 留空。"
+      "notes": "已以 GB 42296—2022 全文核对：额定输入电压由制造商规定（3.2 定义），标准未设固定限值；5.2.7.1 只规定实际最大输入电流相对额定值的偏差（型式试验判据）→ 首期不参数化，保持 pending、value 留空。"
     },
     {
       "id": "GB42296-2022-charger-protection",
@@ -41,16 +61,16 @@
       "clause": null,
       "clause_status": "pending",
       "source": {
-        "kind": "to_verify",
-        "url": "",
+        "kind": "standard_text",
+        "url": "https://openstd.samr.gov.cn/bzgk/std/showGb?type=online&hcno=BC0D9809C45954F590D4CFDF19EAFF90",
         "retrieved_on": "2026-10-14",
-        "title": "待经官方渠道核对（未核对不得写入规则包）",
-        "issuer": ""
+        "title": "国家标准全文公开系统 GB 42296—2022《电动自行车用充电器安全技术要求》全文（在线预览页图）",
+        "issuer": "国家市场监督管理总局、国家标准化管理委员会"
       },
       "status": "pending",
       "verified_on": "",
       "clause_excerpt": "",
-      "notes": "保护功能要求为定性/试验方法条款 → pending，不入参数化核查（首期范围外）。"
+      "notes": "已以 GB 42296—2022 全文核对：保护功能要求（5.2.5 非正常工作、5.2.6 熔断器、5.4 发热与热失控等）为定性/型式试验条款 → 首期不参数化，保持 pending、value 留空。"
     }
   ]
 }

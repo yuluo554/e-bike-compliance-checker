@@ -63,6 +63,91 @@ def test_synthetic_truth_regenerate_byte_identically():
     assert "SYNTHETIC_FROZEN_OK" in output
 
 
+def test_mapping_regenerate_byte_identically():
+    """字段映射表同样是生成器冻结产物：禁手改，再生成必须逐字节一致。"""
+    proc = subprocess.run(
+        [sys.executable, os.path.join(TOOLS, "gen_mapping.py"), "--check"],
+        cwd=ROOT,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    output = proc.stdout.decode("utf-8", "replace")
+    assert proc.returncode == 0, output
+    assert "MAPPING_FROZEN_OK" in output
+
+
+def test_mapping_covers_every_rule_package_param():
+    """映射表必须覆盖规则包里的**全部**标准参数（含 pending 条目）。
+
+    否则 M3 会遇"规则有、映射无"的参数 —— 那种缺口只有在批量扫描时才暴露，
+    故在数据层先守住。
+    """
+    from ebikecheck.io_utils import read_json
+
+    mapping = read_json(os.path.join(DATA, "mapping", "mapping.json"))
+    mapped = {item["param"] for item in mapping["parameters"]}
+    declared = set()
+    for name in sorted(os.listdir(RULES_DIR)):
+        if not name.endswith(".json") or name == "manifest.json":
+            continue
+        raw = read_json(os.path.join(RULES_DIR, name))
+        for rule in raw.get("rules", []):
+            declared.add(rule["param"])
+    assert declared, "规则包未读到任何参数（夹具失效）"
+    assert declared <= mapped, "映射表缺以下参数: {0}".format(sorted(declared - mapped))
+
+
+def test_knowledge_regenerate_byte_identically():
+    """依据索引同样是生成器冻结产物：禁手改，再生成必须逐字节一致。"""
+    proc = subprocess.run(
+        [sys.executable, os.path.join(TOOLS, "gen_knowledge.py"), "--check"],
+        cwd=ROOT,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    output = proc.stdout.decode("utf-8", "replace")
+    assert proc.returncode == 0, output
+    assert "KNOWLEDGE_FROZEN_OK" in output
+
+
+def test_knowledge_snapshot_sha256_matches_files():
+    """依据索引登记的快照 sha256 必须与磁盘实际一致（登记不脱钩）。"""
+    from ebikecheck.io_utils import read_json, sha256_file
+
+    payload = read_json(os.path.join(DATA, "knowledge", "clauses.json"))
+    assert payload["snapshots"], "依据索引未登记任何官方快照"
+    for item in payload["snapshots"]:
+        path = os.path.join(DATA, "knowledge", "raw", item["file"])
+        assert os.path.isfile(path), "快照文件缺失: {0}".format(item["file"])
+        assert sha256_file(path) == item["sha256"], item["file"]
+
+
+def test_knowledge_covers_every_rule_and_flags_pending_clauses():
+    """依据索引必须逐条覆盖规则包；条款状态必须与规则包一致。
+
+    条款号一旦 ``verified`` 就必须非空（不编造纪律的反面：也不许空标 verified）。
+    """
+    from ebikecheck.io_utils import read_json
+
+    payload = read_json(os.path.join(DATA, "knowledge", "clauses.json"))
+    by_id = {item["rule_id"]: item for item in payload["clauses"]}
+
+    rule_ids = []
+    for name in sorted(os.listdir(RULES_DIR)):
+        if not name.endswith(".json") or name == "manifest.json":
+            continue
+        raw = read_json(os.path.join(RULES_DIR, name))
+        for rule in raw["rules"]:
+            rule_ids.append(rule["id"])
+            entry = by_id.get(rule["id"])
+            assert entry is not None, "依据索引缺规则: {0}".format(rule["id"])
+            assert entry["clause_status"] == rule["clause_status"], rule["id"]
+            assert entry["param"] == rule["param"], rule["id"]
+            if rule["clause_status"] == "verified":
+                assert rule["clause"], "{0}: clause_status=verified 但条款号为空".format(rule["id"])
+    assert len(rule_ids) == len(by_id), "依据索引条目数与规则包不一致"
+
+
 def test_manifest_sha256_matches_files():
     """manifest 登记的分册 sha256 必须与磁盘实际一致（产物与登记不脱钩）。"""
     from ebikecheck.engine import rules as rules_mod

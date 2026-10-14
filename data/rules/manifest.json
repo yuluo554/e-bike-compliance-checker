@@ -9,7 +9,7 @@
       "scope": "vehicle",
       "version_key": "GB17761-2024",
       "effective_from": "2025-09-01",
-      "sha256": "2fe962706518f8e14fdb476ea20f6dd8955b6c398031e52d9a3c477df82b7c34"
+      "sha256": "1d00b3f05c5d29b3fbfe292b87f639e23ab9b061d1bf2285ed7462f31725df33"
     },
     {
       "file": "gb17761-2018.json",
@@ -17,7 +17,7 @@
       "scope": "vehicle",
       "version_key": "GB17761-2018",
       "effective_from": "2019-04-15",
-      "sha256": "f121ed99bda556f7dad6560445ce2515c1dd4789e24ccb4fa19080a7bb20b681"
+      "sha256": "32d018bb15989d1e086c515e4e9d3129d234f1d99e44c639f98fc92bb4f3f801"
     },
     {
       "file": "gb43854-2024.json",
@@ -25,7 +25,7 @@
       "scope": "battery",
       "version_key": "GB43854-2024",
       "effective_from": "2024-11-01",
-      "sha256": "7d9594e7d58687a6d1dbdf7ccca64ed7bbae02c38c2496188536792e6c876752"
+      "sha256": "6fd4dabc2056ca5c4b218e43823cf9ede3db003fdbe12b2489eaf4e1e8c78dcd"
     },
     {
       "file": "gb42296-2022.json",
@@ -33,7 +33,7 @@
       "scope": "charger",
       "version_key": "GB42296-2022",
       "effective_from": "2023-07-01",
-      "sha256": "a1a206fc04aaac515f853fe110d886446c04b5e2dafc59771d5de185018fcd81"
+      "sha256": "4c64e4f611a70eb324f5b4abcd4b0297e1925feb74b807bcf8a17a8c58f5f1c6"
     }
   ],
   "version_anchors": [

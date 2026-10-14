@@ -68,3 +68,31 @@ def load_rule_values(data_dir):
         if rule["status"] == "verified" and rule["value"] is not None:
             out[rule["param"]] = rule
     return out
+
+
+def compliant_params(values, exclude=()):
+    """由规则包限值推出一份**全参数合规**的档案参数表（不写死数值）。
+
+    规则包随里程碑增长（M1 新增标称电压、额定功率等），"干净档案"的用例若手写
+    参数集就会随规则库过期 → 这里按 op 从限值推出合规取值，自动跟上。
+    """
+    from decimal import Decimal
+
+    params = {}
+    for name, rule in values.items():
+        if name in exclude:
+            continue
+        op = rule.get("op", "<=")
+        unit = rule.get("unit", "")
+        limit = rule["value"]
+        if op == "==":
+            token = str(limit)
+            params[name] = param(True if token == "true" else False if token == "false" else token, unit)
+            continue
+        number = Decimal(str(limit))
+        step = Decimal("0.1") if unit in ("km/h", "kg", "%", "V", "m", "km") else Decimal("1")
+        if op == ">=":
+            params[name] = param(str(number + step), unit)
+        else:
+            params[name] = param(str(number - step), unit)
+    return params

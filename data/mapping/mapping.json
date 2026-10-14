@@ -1,0 +1,297 @@
+{
+  "schema_version": "1.0",
+  "generated_by": "tools/gen_mapping.py",
+  "generator_version": "1.0.0",
+  "param_count": 14,
+  "parameters": [
+    {
+      "param": "max_design_speed",
+      "scope": "vehicle",
+      "canonical": "最高设计车速",
+      "unit": "km/h",
+      "variants": [
+        "最高设计车速",
+        "最高车速",
+        "设计车速",
+        "最大车速",
+        "最高设计速度",
+        "设计最高车速",
+        "max_design_speed"
+      ],
+      "ambiguous_variants": [
+        "车速",
+        "速度"
+      ],
+      "notes": "GB 17761—2024 6.1.1.1 用语为『最高设计车速』；厂家表常简写为『最高车速』。"
+    },
+    {
+      "param": "vehicle_mass",
+      "scope": "vehicle",
+      "canonical": "整车质量",
+      "unit": "kg",
+      "variants": [
+        "整车质量",
+        "整车重量",
+        "整车整备质量",
+        "车辆质量",
+        "整车净重",
+        "vehicle_mass"
+      ],
+      "ambiguous_variants": [
+        "重量",
+        "质量"
+      ],
+      "notes": "GB 17761—2024 6.1.3；铅酸蓄电池车型与其他类型分别限值（见规则包两条按 battery_type 条件的限值）。"
+    },
+    {
+      "param": "battery_type",
+      "scope": "vehicle",
+      "canonical": "蓄电池类型",
+      "unit": "",
+      "variants": [
+        "蓄电池类型",
+        "电池类型",
+        "电池种类",
+        "蓄电池种类",
+        "battery_type"
+      ],
+      "ambiguous_variants": [],
+      "notes": "枚举值（铅酸蓄电池 lead_acid / 锂离子蓄电池 lithium_ion 等）；同时是 vehicle_mass 限值分支的适用条件参数。"
+    },
+    {
+      "param": "plastic_mass_ratio",
+      "scope": "vehicle",
+      "canonical": "塑料占比",
+      "unit": "%",
+      "variants": [
+        "塑料占比",
+        "塑料质量占比",
+        "塑料总质量占比",
+        "塑料质量比例",
+        "塑料占总质量比例",
+        "plastic_mass_ratio"
+      ],
+      "ambiguous_variants": [
+        "占比",
+        "比例"
+      ],
+      "notes": "GB 17761—2024 6.5；新增要求。"
+    },
+    {
+      "param": "nominal_voltage",
+      "scope": "vehicle",
+      "canonical": "标称电压",
+      "unit": "V",
+      "variants": [
+        "标称电压",
+        "蓄电池标称电压",
+        "电池组标称电压",
+        "电池标称电压",
+        "nominal_voltage"
+      ],
+      "ambiguous_variants": [
+        "电压"
+      ],
+      "notes": "GB 17761—2024 6.3.5；官方问答未列明，M1 以正式标准全文补齐。"
+    },
+    {
+      "param": "motor_rated_power",
+      "scope": "vehicle",
+      "canonical": "电动机额定连续输出功率",
+      "unit": "W",
+      "variants": [
+        "电动机额定连续输出功率",
+        "电动机额定功率",
+        "电机额定功率",
+        "额定连续输出功率",
+        "电机功率",
+        "电动机功率",
+        "motor_rated_power"
+      ],
+      "ambiguous_variants": [
+        "功率"
+      ],
+      "notes": "GB 17761—2024 6.3.3.1；官方问答未列明，M1 以正式标准全文补齐。"
+    },
+    {
+      "param": "over_speed_power_cutoff",
+      "scope": "vehicle",
+      "canonical": "超速断电功能",
+      "unit": "",
+      "variants": [
+        "超速断电功能",
+        "超速断电",
+        "车速超限断电",
+        "超速保护功能",
+        "over_speed_power_cutoff"
+      ],
+      "ambiguous_variants": [],
+      "notes": "布尔参数（具备该功能为 true）；GB 17761—2024 6.1.1.1。"
+    },
+    {
+      "param": "anti_tamper_battery_pack",
+      "scope": "vehicle",
+      "canonical": "电池组防篡改",
+      "unit": "",
+      "variants": [
+        "电池组防篡改",
+        "电池防篡改",
+        "电池组防篡改功能",
+        "防扩展电池接口",
+        "anti_tamper_battery_pack"
+      ],
+      "ambiguous_variants": [],
+      "notes": "布尔参数；GB 17761—2024 6.8.1.1（不应预留扩展车载电池接口或线路、不应有外设电池组托架）。"
+    },
+    {
+      "param": "anti_tamper_controller",
+      "scope": "vehicle",
+      "canonical": "控制器防篡改",
+      "unit": "",
+      "variants": [
+        "控制器防篡改",
+        "控制器防篡改功能",
+        "防剪线跳线改装",
+        "防多电压兼容",
+        "anti_tamper_controller"
+      ],
+      "ambiguous_variants": [],
+      "notes": "布尔参数；GB 17761—2024 6.8.2.1。"
+    },
+    {
+      "param": "anti_tamper_speed_limiter",
+      "scope": "vehicle",
+      "canonical": "限速器防篡改",
+      "unit": "",
+      "variants": [
+        "限速器防篡改",
+        "限速器防篡改功能",
+        "防限速修改",
+        "anti_tamper_speed_limiter"
+      ],
+      "ambiguous_variants": [],
+      "notes": "布尔参数；GB 17761—2024 6.8.3。"
+    },
+    {
+      "param": "battery_output_voltage",
+      "scope": "battery",
+      "canonical": "电池组最大输出电压",
+      "unit": "V",
+      "variants": [
+        "电池组最大输出电压",
+        "最大输出电压",
+        "电池最大输出电压",
+        "battery_output_voltage"
+      ],
+      "ambiguous_variants": [
+        "输出电压"
+      ],
+      "notes": "规则包中该条目当前为 pending（GB 43854—2024 未设固定数值限值；等效指标由 GB 17761—2024 6.3.5 规定）。映射表先登记列名，条目生效由规则包 status 门控决定。"
+    },
+    {
+      "param": "charger_no_load_output_voltage",
+      "scope": "charger",
+      "canonical": "充电器空载输出电压",
+      "unit": "V",
+      "variants": [
+        "充电器空载输出电压",
+        "空载输出电压",
+        "充电器开路输出电压",
+        "charger_no_load_output_voltage"
+      ],
+      "ambiguous_variants": [],
+      "notes": "GB 42296—2022 5.5.4；M1 新建条目。"
+    },
+    {
+      "param": "charger_rated_input_voltage",
+      "scope": "charger",
+      "canonical": "充电器额定输入电压",
+      "unit": "V",
+      "variants": [
+        "充电器额定输入电压",
+        "额定输入电压",
+        "充电器输入电压",
+        "charger_rated_input_voltage"
+      ],
+      "ambiguous_variants": [],
+      "notes": "GB 42296—2022 3.2 定义为制造商规定值；标准未设固定限值 → 规则包条目为 pending，首期不参数化。"
+    },
+    {
+      "param": "charger_protection_function",
+      "scope": "charger",
+      "canonical": "充电器保护功能",
+      "unit": "",
+      "variants": [
+        "充电器保护功能",
+        "保护功能",
+        "非正常工作保护",
+        "charger_protection_function"
+      ],
+      "ambiguous_variants": [],
+      "notes": "GB 42296—2022 5.2.5/5.2.6/5.4 等为定性/型式试验条款 → 规则包条目为 pending，首期不参数化。"
+    }
+  ],
+  "unit_aliases": {
+    "%": [
+      "%",
+      "％",
+      "百分比"
+    ],
+    "Ah": [
+      "Ah",
+      "ah",
+      "安时"
+    ],
+    "V": [
+      "V",
+      "v",
+      "伏",
+      "伏特",
+      "volt"
+    ],
+    "W": [
+      "W",
+      "w",
+      "瓦",
+      "瓦特",
+      "watt"
+    ],
+    "g": [
+      "g",
+      "G",
+      "克",
+      "gram"
+    ],
+    "kg": [
+      "kg",
+      "KG",
+      "千克",
+      "公斤",
+      "kilogram"
+    ],
+    "km": [
+      "km",
+      "KM",
+      "千米",
+      "公里",
+      "kilometer"
+    ],
+    "km/h": [
+      "km/h",
+      "KM/H",
+      "千米/小时",
+      "公里/小时",
+      "kph"
+    ],
+    "m": [
+      "m",
+      "M",
+      "米",
+      "meter"
+    ],
+    "m/s": [
+      "m/s",
+      "米/秒"
+    ]
+  }
+}

@@ -144,14 +144,36 @@ def test_duplicate_param_with_different_condition_allowed():
 
 
 def test_status_gating_excludes_pending(data_dir):
+    """门控纪律：``pending`` 零进入核查路径，且全库仍存在 ``pending`` 条目。
+
+    M1 后 GB 17761 两册已全部转 ``verified``（条款号与数值均以正式标准全文核对），
+    电池/充电器册的首期不参数化条目仍为 ``pending`` —— 门控因此按**全库**口径断言，
+    不绑定某一分册的具体计数。
+    """
     manifest = rules_mod.load_manifest(data_dir)
-    ruleset = rules_mod.load_ruleset_by_key(data_dir, manifest, "GB17761-2024")
-    effective_ids = {rule.id for rule in ruleset.rules}
-    excluded_ids = {item.rule_id for item in ruleset.excluded}
-    assert effective_ids.isdisjoint(excluded_ids), "pending 条目不得同时出现在生效集"
-    assert excluded_ids, "本库应存在 pending 条目（首版特征）"
-    for item in ruleset.excluded:
-        assert item.reason == "not_verified"
+    total_excluded = 0
+    for entry in manifest.rulesets:
+        ruleset = rules_mod.load_ruleset_by_key(data_dir, manifest, entry["version_key"])
+        effective_ids = {rule.id for rule in ruleset.rules}
+        excluded_ids = {item.rule_id for item in ruleset.excluded}
+        assert effective_ids.isdisjoint(excluded_ids), "pending 条目不得同时出现在生效集"
+        for item in ruleset.excluded:
+            assert item.reason == "not_verified"
+        total_excluded += len(excluded_ids)
+    assert total_excluded > 0, "全库应仍存在 pending 条目（电池/充电器册首期不参数化）"
+
+
+def test_pending_rule_is_excluded_from_check_path():
+    """机制（与数据状态解耦）：``pending`` 条目被门控排除、``verified`` 才生效。"""
+    payload = _minimal_ruleset(
+        [
+            _minimal_rule(id="OK", param="p", value="1"),
+            _minimal_rule(id="WAIT", param="q", status="pending", value=None),
+        ]
+    )
+    ruleset = rules_mod.load_ruleset_file_from_dict(payload, "probe.json")
+    assert {rule.id for rule in ruleset.rules} == {"OK"}
+    assert {item.rule_id for item in ruleset.excluded} == {"WAIT"}
 
 
 def test_selfcheck_counts_match_manifest(data_dir):

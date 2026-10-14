@@ -33,14 +33,23 @@ def expected_states(case: Dict[str, Any]) -> Dict[str, str]:
 def observed_states(result: CheckResult) -> Dict[str, str]:
     """档案实际的逐参数结论。
 
-    同一参数可能有多条规则（如 ``vehicle_mass`` 受铅蓄电池/其他两条约束），
-    取**最弱结论**（不符合 > 未提供 > 不适用 > 符合），与 ``CheckResult.overall`` 同序。
+    同一参数可能有多条规则（如 ``vehicle_mass`` 受铅蓄电池/其他电池两条**互斥**条件
+    规则约束）。取"最弱结论"的次序为 不符合 > 未提供 > 符合，与
+    ``CheckResult.overall`` 同序；
+
+    ``not_applicable`` **只在某参数的所有规则都不适用时**才作为该参数的结论 ——
+    否则"铅酸蓄电池车型"的整车质量会被本不适用的"其他电池类型"规则拉成
+    ``not_applicable``（把一条适用规则的明确结论覆盖掉）。
     """
-    order = {"non_compliant": 0, "not_provided": 1, "not_applicable": 2, "compliant": 3}
+    order = {"non_compliant": 0, "not_provided": 1, "compliant": 2}
     tally: Dict[str, str] = {}
     for finding in result.findings:
+        if finding.state == "not_applicable":
+            # 占位登记：若无任何适用结论，最终回落到 not_applicable。
+            tally.setdefault(finding.param, "not_applicable")
+            continue
         current = tally.get(finding.param)
-        if current is None or order.get(finding.state, 9) < order.get(current, 9):
+        if current is None or current == "not_applicable" or order.get(finding.state, 9) < order.get(current, 9):
             tally[finding.param] = finding.state
     return tally
 

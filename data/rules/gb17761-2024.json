@@ -20,19 +20,19 @@
       "op": "<=",
       "value": "25",
       "unit": "km/h",
-      "clause": null,
-      "clause_status": "pending",
+      "clause": "6.1.1.1",
+      "clause_status": "verified",
       "source": {
-        "kind": "gov_qna",
-        "url": "https://www.gov.cn/zhengce/202501/content_6998231.htm",
+        "kind": "standard_text",
+        "url": "https://openstd.samr.gov.cn/bzgk/std/showGb?type=online&hcno=32E5D633E04B67FB241D100CA2A4A41D",
         "retrieved_on": "2026-10-14",
-        "title": "《GB 17761—2024 主要技术内容问答》",
-        "issuer": "工业和信息化部"
+        "title": "国家标准全文公开系统 GB 17761—2024《电动自行车安全技术规范》全文（在线预览页图，共 43 页）",
+        "issuer": "国家市场监督管理总局、国家标准化管理委员会"
       },
       "status": "verified",
       "verified_on": "2026-10-14",
-      "clause_excerpt": "最高设计车速不得超过 25 km/h",
-      "notes": "数值经 gov.cn 官方问答逐字核对；条款号待以正式标准文本补录。"
+      "clause_excerpt": "使用电驱动功能行驶时，最高车速不应超过最高设计车速，且最高设计车速不应超过 25 km/h。",
+      "notes": "条款号与数值均以正式标准全文（6.1.1.1 车速限值要求 a)）逐条核对；数值与 gov.cn 官方问答一致。"
     },
     {
       "id": "GB17761-2024-over_speed_power_cutoff",
@@ -40,19 +40,19 @@
       "op": "==",
       "value": "true",
       "unit": "",
-      "clause": null,
-      "clause_status": "pending",
+      "clause": "6.1.1.1",
+      "clause_status": "verified",
       "source": {
-        "kind": "gov_qna",
-        "url": "https://www.gov.cn/zhengce/202501/content_6998231.htm",
+        "kind": "standard_text",
+        "url": "https://openstd.samr.gov.cn/bzgk/std/showGb?type=online&hcno=32E5D633E04B67FB241D100CA2A4A41D",
         "retrieved_on": "2026-10-14",
-        "title": "《GB 17761—2024 主要技术内容问答》",
-        "issuer": "工业和信息化部"
+        "title": "国家标准全文公开系统 GB 17761—2024《电动自行车安全技术规范》全文（在线预览页图，共 43 页）",
+        "issuer": "国家市场监督管理总局、国家标准化管理委员会"
       },
       "status": "verified",
       "verified_on": "2026-10-14",
-      "clause_excerpt": "超过 25 km/h 时电动机应停止提供动力输出",
-      "notes": "新增要求；以布尔参数承载（具备该功能为 true）。"
+      "clause_excerpt": "如果车速超过 25 km/h，电动机不应提供动力输出。",
+      "notes": "布尔参数承载（具备该功能为 true）；条款号以正式标准全文 6.1.1.1 a)/b) 核对。"
     },
     {
       "id": "GB17761-2024-vehicle_mass-lead-acid",
@@ -60,33 +60,33 @@
       "op": "<=",
       "value": "63",
       "unit": "kg",
-      "clause": null,
-      "clause_status": "pending",
+      "clause": "6.1.3",
+      "clause_status": "verified",
       "applies_if": {
         "param": "battery_type",
         "op": "==",
         "value": "lead_acid"
       },
       "source": {
-        "kind": "gov_qna",
-        "url": "https://www.gov.cn/zhengce/202501/content_6998231.htm",
+        "kind": "standard_text",
+        "url": "https://openstd.samr.gov.cn/bzgk/std/showGb?type=online&hcno=32E5D633E04B67FB241D100CA2A4A41D",
         "retrieved_on": "2026-10-14",
-        "title": "《GB 17761—2024 主要技术内容问答》",
-        "issuer": "工业和信息化部"
+        "title": "国家标准全文公开系统 GB 17761—2024《电动自行车安全技术规范》全文（在线预览页图，共 43 页）",
+        "issuer": "国家市场监督管理总局、国家标准化管理委员会"
       },
       "status": "verified",
       "verified_on": "2026-10-14",
-      "clause_excerpt": "将铅蓄电池车型的重量限值放宽至 63 kg",
-      "notes": "仅适用铅蓄电池车型；其他电池类型由 vehicle_mass-other 约束。"
+      "clause_excerpt": "使用铅酸蓄电池的装配完整的电动自行车整车质量应小于或等于 63 kg。",
+      "notes": "仅适用铅酸蓄电池车型；其他类型由 vehicle_mass-other（同为 6.1.3）约束。条款号与数值以正式标准全文核对。"
     },
     {
       "id": "GB17761-2024-vehicle_mass-other",
       "param": "vehicle_mass",
       "op": "<=",
-      "value": null,
+      "value": "55",
       "unit": "kg",
-      "clause": null,
-      "clause_status": "pending",
+      "clause": "6.1.3",
+      "clause_status": "verified",
       "applies_if": {
         "not": {
           "param": "battery_type",
@@ -95,16 +95,16 @@
         }
       },
       "source": {
-        "kind": "to_verify",
-        "url": "",
+        "kind": "standard_text",
+        "url": "https://openstd.samr.gov.cn/bzgk/std/showGb?type=online&hcno=32E5D633E04B67FB241D100CA2A4A41D",
         "retrieved_on": "2026-10-14",
-        "title": "待经官方渠道核对（未核对不得写入规则包）",
-        "issuer": ""
+        "title": "国家标准全文公开系统 GB 17761—2024《电动自行车安全技术规范》全文（在线预览页图，共 43 页）",
+        "issuer": "国家市场监督管理总局、国家标准化管理委员会"
       },
-      "status": "pending",
-      "verified_on": "",
-      "clause_excerpt": "",
-      "notes": "非铅蓄电池车型的质量限值未经官方问答直接确认（问答仅述铅蓄电池车型放宽至 63 kg，其余车型沿用旧值属推断）→ 保持 pending、value 留空，不进入核查路径。"
+      "status": "verified",
+      "verified_on": "2026-10-14",
+      "clause_excerpt": "其他类型的装配完整的电动自行车的整车质量应小于或等于 55 kg。",
+      "notes": "M1 已以正式标准全文 6.1.3 补齐：非铅蓄电池车型沿用 55 kg（前版存疑项已闭环，不再依赖推断）。"
     },
     {
       "id": "GB17761-2024-plastic_mass_ratio",
@@ -112,59 +112,59 @@
       "op": "<=",
       "value": "5.5",
       "unit": "%",
-      "clause": null,
-      "clause_status": "pending",
+      "clause": "6.5.1",
+      "clause_status": "verified",
       "source": {
-        "kind": "gov_qna",
-        "url": "https://www.gov.cn/zhengce/202501/content_6998231.htm",
+        "kind": "standard_text",
+        "url": "https://openstd.samr.gov.cn/bzgk/std/showGb?type=online&hcno=32E5D633E04B67FB241D100CA2A4A41D",
         "retrieved_on": "2026-10-14",
-        "title": "《GB 17761—2024 主要技术内容问答》",
-        "issuer": "工业和信息化部"
+        "title": "国家标准全文公开系统 GB 17761—2024《电动自行车安全技术规范》全文（在线预览页图，共 43 页）",
+        "issuer": "国家市场监督管理总局、国家标准化管理委员会"
       },
       "status": "verified",
       "verified_on": "2026-10-14",
-      "clause_excerpt": "电动自行车使用的塑料的总质量不应超过整车质量的 5.5%",
-      "notes": "新增要求。"
+      "clause_excerpt": "电动自行车使用的塑料的总质量不应超过整车质量的 5.5%。",
+      "notes": "新增要求；条款号以正式标准全文 6.5.1 塑料占比要求核对。"
     },
     {
       "id": "GB17761-2024-nominal_voltage",
       "param": "nominal_voltage",
       "op": "<=",
-      "value": null,
+      "value": "48",
       "unit": "V",
-      "clause": null,
-      "clause_status": "pending",
+      "clause": "6.3.5",
+      "clause_status": "verified",
       "source": {
-        "kind": "to_verify",
-        "url": "",
+        "kind": "standard_text",
+        "url": "https://openstd.samr.gov.cn/bzgk/std/showGb?type=online&hcno=32E5D633E04B67FB241D100CA2A4A41D",
         "retrieved_on": "2026-10-14",
-        "title": "待经官方渠道核对（未核对不得写入规则包）",
-        "issuer": ""
+        "title": "国家标准全文公开系统 GB 17761—2024《电动自行车安全技术规范》全文（在线预览页图，共 43 页）",
+        "issuer": "国家市场监督管理总局、国家标准化管理委员会"
       },
-      "status": "pending",
-      "verified_on": "",
-      "clause_excerpt": "",
-      "notes": "官方问答未列明蓄电池标称电压数值 → pending、value 留空，不得凭记忆填数。"
+      "status": "verified",
+      "verified_on": "2026-10-14",
+      "clause_excerpt": "电动自行车的电池组标示的标称电压通常可选择为 24 V、36 V 或 48 V，标示值不应超过 48 V。",
+      "notes": "M1 已以正式标准全文 6.3.5 补齐（官方问答未列明该数值，此前为 pending）。"
     },
     {
       "id": "GB17761-2024-motor_rated_power",
       "param": "motor_rated_power",
       "op": "<=",
-      "value": null,
+      "value": "400",
       "unit": "W",
-      "clause": null,
-      "clause_status": "pending",
+      "clause": "6.3.3.1",
+      "clause_status": "verified",
       "source": {
-        "kind": "to_verify",
-        "url": "",
+        "kind": "standard_text",
+        "url": "https://openstd.samr.gov.cn/bzgk/std/showGb?type=online&hcno=32E5D633E04B67FB241D100CA2A4A41D",
         "retrieved_on": "2026-10-14",
-        "title": "待经官方渠道核对（未核对不得写入规则包）",
-        "issuer": ""
+        "title": "国家标准全文公开系统 GB 17761—2024《电动自行车安全技术规范》全文（在线预览页图，共 43 页）",
+        "issuer": "国家市场监督管理总局、国家标准化管理委员会"
       },
-      "status": "pending",
-      "verified_on": "",
-      "clause_excerpt": "",
-      "notes": "官方问答未列明电动机额定功率数值 → pending、value 留空。"
+      "status": "verified",
+      "verified_on": "2026-10-14",
+      "clause_excerpt": "测量此时电动机的输出功率，应小于或等于 400 W。",
+      "notes": "M1 已以正式标准全文 6.3.3.1 电动机额定连续输出功率补齐（此前为 pending）。"
     },
     {
       "id": "GB17761-2024-anti_tamper-battery",
@@ -172,19 +172,19 @@
       "op": "==",
       "value": "true",
       "unit": "",
-      "clause": null,
-      "clause_status": "pending",
+      "clause": "6.8.1.1",
+      "clause_status": "verified",
       "source": {
-        "kind": "gov_qna",
-        "url": "https://www.gov.cn/zhengce/202501/content_6998231.htm",
+        "kind": "standard_text",
+        "url": "https://openstd.samr.gov.cn/bzgk/std/showGb?type=online&hcno=32E5D633E04B67FB241D100CA2A4A41D",
         "retrieved_on": "2026-10-14",
-        "title": "《GB 17761—2024 主要技术内容问答》",
-        "issuer": "工业和信息化部"
+        "title": "国家标准全文公开系统 GB 17761—2024《电动自行车安全技术规范》全文（在线预览页图，共 43 页）",
+        "issuer": "国家市场监督管理总局、国家标准化管理委员会"
       },
       "status": "verified",
       "verified_on": "2026-10-14",
-      "clause_excerpt": "电池组不得预留扩展车载电池接口或线路",
-      "notes": "防篡改三方面之一；布尔参数（设计满足为 true）。"
+      "clause_excerpt": "电动自行车不应预留扩展车载电池的接口或线路；不应有外设电池组托架。",
+      "notes": "防篡改三方面之一；布尔参数（设计满足为 true）；条款号以正式标准全文 6.8.1.1 核对。"
     },
     {
       "id": "GB17761-2024-anti_tamper-controller",
@@ -192,19 +192,19 @@
       "op": "==",
       "value": "true",
       "unit": "",
-      "clause": null,
-      "clause_status": "pending",
+      "clause": "6.8.2.1",
+      "clause_status": "verified",
       "source": {
-        "kind": "gov_qna",
-        "url": "https://www.gov.cn/zhengce/202501/content_6998231.htm",
+        "kind": "standard_text",
+        "url": "https://openstd.samr.gov.cn/bzgk/std/showGb?type=online&hcno=32E5D633E04B67FB241D100CA2A4A41D",
         "retrieved_on": "2026-10-14",
-        "title": "《GB 17761—2024 主要技术内容问答》",
-        "issuer": "工业和信息化部"
+        "title": "国家标准全文公开系统 GB 17761—2024《电动自行车安全技术规范》全文（在线预览页图，共 43 页）",
+        "issuer": "国家市场监督管理总局、国家标准化管理委员会"
       },
       "status": "verified",
       "verified_on": "2026-10-14",
-      "clause_excerpt": "控制器不得剪线跳线改装、不得兼容多种输入电压",
-      "notes": "防篡改三方面之一。"
+      "clause_excerpt": "不应设计为通过剪线、跳线等方式进行修改；不应兼容多种电压模式。",
+      "notes": "防篡改三方面之一；条款号以正式标准全文 6.8.2.1 核对。"
     },
     {
       "id": "GB17761-2024-anti_tamper-speed_limiter",
@@ -212,19 +212,19 @@
       "op": "==",
       "value": "true",
       "unit": "",
-      "clause": null,
-      "clause_status": "pending",
+      "clause": "6.8.3",
+      "clause_status": "verified",
       "source": {
-        "kind": "gov_qna",
-        "url": "https://www.gov.cn/zhengce/202501/content_6998231.htm",
+        "kind": "standard_text",
+        "url": "https://openstd.samr.gov.cn/bzgk/std/showGb?type=online&hcno=32E5D633E04B67FB241D100CA2A4A41D",
         "retrieved_on": "2026-10-14",
-        "title": "《GB 17761—2024 主要技术内容问答》",
-        "issuer": "工业和信息化部"
+        "title": "国家标准全文公开系统 GB 17761—2024《电动自行车安全技术规范》全文（在线预览页图，共 43 页）",
+        "issuer": "国家市场监督管理总局、国家标准化管理委员会"
       },
       "status": "verified",
       "verified_on": "2026-10-14",
-      "clause_excerpt": "限速器不得具备修改限速值功能",
-      "notes": "防篡改三方面之一。"
+      "clause_excerpt": "电动自行车应具备限速器防篡改功能。",
+      "notes": "防篡改三方面之一；条款号以正式标准全文 6.8.3 核对。"
     }
   ]
 }

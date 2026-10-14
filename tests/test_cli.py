@@ -30,19 +30,11 @@ def test_selfcheck_exit_zero_and_reports_gating(capsys):
 
 
 def test_check_clean_profile_exit_zero(capsys, written_profile, tmp_path):
-    speed = VALUES["max_design_speed"]
-    plastic = VALUES["plastic_mass_ratio"]
-    mass = VALUES["vehicle_mass"]
-    params = {
-        "max_design_speed": param(str(float(speed["value"]) - 1), speed["unit"]),
-        "plastic_mass_ratio": param(str(float(plastic["value"]) - 1), plastic["unit"]),
-        "vehicle_mass": param(str(float(mass["value"]) - 1), mass["unit"]),
-        "battery_type": param("lead_acid", ""),
-        "over_speed_power_cutoff": param(True, ""),
-        "anti_tamper_battery_pack": param(True, ""),
-        "anti_tamper_controller": param(True, ""),
-        "anti_tamper_speed_limiter": param(True, ""),
-    }
+    """全参数合规档案 → 整体"符合"、退出码 0（参数集由规则包推导，不写死数值）。"""
+    from conftest import compliant_params
+
+    params = compliant_params(VALUES)
+    params["battery_type"] = param("lead_acid", "")
     path = written_profile(params)
     code = _run(["check", path, "--data-dir", DATA])
     assert code == cli.EXIT_OK
@@ -85,14 +77,36 @@ def test_not_provided_does_not_change_exit_code(capsys, written_profile):
     assert payload["overall"] == "not_provided"
 
 
-def test_check_reports_excluded_rules_explicitly(capsys, written_profile):
-    """门控必须"不留空"：未启用规则要显式列出。"""
+def test_rules_overview_reports_excluded_rules_explicitly(capsys):
+    """门控必须"不留空"：未启用（pending）规则要显式列出。
+
+    M1 后 GB 17761 两册已全部转 verified，``pending`` 落在电池/充电器册的
+    "首期不参数化"条目上 —— 用 ``rules`` 概览（覆盖全库）断言，而非只看单车版册。
+    """
+    code = _run(["rules", "--data-dir", DATA])
+    assert code == cli.EXIT_OK
+    out = capsys.readouterr().out
+    assert "未启用" in out
+    code = _run(["rules", "--data-dir", DATA, "--json"])
+    assert code == cli.EXIT_OK
+    payload = json.loads(capsys.readouterr().out)
+    excluded = [
+        (item["file"], rule)
+        for item in payload["rulesets"]
+        for rule in item["excluded"]
+    ]
+    assert excluded, "全库应仍存在未启用规则（电池/充电器册首期不参数化）"
+    assert any(rule["rule_id"] for _, rule in excluded)
+
+
+def test_check_reports_real_clause_numbers(capsys, written_profile):
+    """M1 后条款号已补录：逐项结论必须打印真实条款号，而非"条款号待核对"。"""
     path = written_profile({"max_design_speed": param("20", "km/h")})
     code = _run(["check", path, "--data-dir", DATA])
     assert code == cli.EXIT_OK
     out = capsys.readouterr().out
-    assert "未启用" in out
-    assert "not_verified" in out
+    assert "条款号待核对" not in out
+    assert "6.1.1.1" in out
 
 
 def test_missing_file_exit_two(capsys, tmp_path):

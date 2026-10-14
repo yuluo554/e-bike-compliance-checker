@@ -64,7 +64,13 @@ KEY_RE = re.compile(_SEG["sk"] + r"[A-Za-z0-9]{16,}")
 LONG_HEX_RE = re.compile(r"\b[0-9a-fA-F]{40,}\b")
 GITHUB_URL_RE = re.compile(r"github\.com[/:][A-Za-z0-9._-]+")
 
-TEXT_SUFFIXES = (".py", ".md", ".json", ".toml", ".cfg", ".txt", ".yml", ".yaml", ".spec", ".in")
+#: POSIX 个人目录：**要求 `/home/` 不是 URL 里的路径段**（audit-allow：本行是检测器自述，非泄露样本）。
+#: 收紧的理由（实测）：官方站点链接（如 `https://www.gov.cn/home/2023-03/29/...`）含
+#: `/home/`，宽松子串匹配会把官方快照整批判成 HARD（audit-allow：同上）。真实泄露形态是**文件系统路径**
+#: （行首/空白/引号/`=` 之后），其前一字符不是域名类字符 → 用环视区分。
+POSIX_HOME_RE = re.compile(r"(?<![A-Za-z0-9.-])" + _SEG["user_dir_posix"])
+
+TEXT_SUFFIXES = (".py", ".md", ".json", ".toml", ".cfg", ".txt", ".yml", ".yaml", ".spec", ".in", ".html")
 BINARY_SUFFIXES = (".png", ".jpg", ".jpeg", ".gif", ".ico", ".exe", ".zip", ".pdf", ".docx", ".xlsx", ".pyc", ".so", ".pyd", ".dll")
 
 
@@ -112,7 +118,7 @@ def scan_text(text, path, line_offset=0):
             hits.append(Hit(path, line_no, "idcard-like", "HARD"))
         if KEY_RE.search(scrubbed):
             hits.append(Hit(path, line_no, "secret-key", "HARD"))
-        if _SEG["user_dir_win"] in line or _SEG["user_dir_posix"] in line or _SEG["user_dir_mac"] in line:
+        if _SEG["user_dir_win"] in line or POSIX_HOME_RE.search(line) or _SEG["user_dir_mac"] in line:
             hits.append(Hit(path, line_no, "user-home-path", "HARD"))
         if _SEG["progdata"] in line and _local_user_hint():
             hits.append(Hit(path, line_no, "work-root-path", "REVIEW", note="本地工作根形态"))
@@ -250,6 +256,23 @@ def selftest():
     hex_hits = scan_text(hexbed, "selftest-hex")
     if any(hit.level == "HARD" for hit in hex_hits):
         problems.append("阴性对照失败：sha256 长 hex 被判 HARD（应为 advisory）")
+
+    # 阳性：POSIX 文件系统路径仍须判 HARD（收紧环视后不得漏）。
+    posix_home = _SEG["user_dir_posix"] + "someuser/repo/data"
+    posix_hits = [hit for hit in scan_text("path: {0}".format(posix_home), "selftest-posix") if hit.category == "user-home-path"]
+    if not posix_hits:
+        problems.append("阳性对照失败：POSIX 个人目录路径未判 HARD")
+
+    # 阴性：官方站点链接里的 `/home/` 路径段不得判 HARD（实测坑；audit-allow：本行是检测器自述）。
+    official_urls = "\n".join(
+        [
+            '<li><a href="https://www.gov.cn/home/2023-03/29/content_5748953.htm">国务院部门网站</a></li>',
+            '<a href="https://www.gov.cn/home/2016-05/11/content_5046257.htm">关于本网</a>',
+        ]
+    )
+    url_hits = [hit for hit in scan_text(official_urls, "selftest-official-url") if hit.level == "HARD"]
+    if url_hits:
+        problems.append("阴性对照失败：官方站点链接被判 HARD（{0}）".format(url_hits[0].category))
 
     # 阴性：行内 audit-allow 必须放过。
     allowed = "phone: {0}  {1}".format(synthetic_phone, MARKER)

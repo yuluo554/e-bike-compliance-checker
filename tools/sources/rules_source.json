@@ -1,11 +1,32 @@
 {
-  "_comment": "规则来源登记（人工维护；生成器唯一消费）。数值纪律：只登记有可直连官方来源的数值；无来源者 status=pending 且 value=null。clause 字段在没有核到条款号前一律留空并标 clause_status=pending —— 不编造条款号。",
+  "_comment": "规则来源登记（人工维护；生成器唯一消费）。数值纪律：只登记有可直连官方来源的数值；无来源者 status=pending 且 value=null。clause 纪律：条款号只在以正式标准文本逐条核对后填写；核不到一律留空并标 clause_status=pending —— 不编造条款号。",
   "sources": {
     "gov_qna_2025": {
       "kind": "gov_qna",
       "title": "《GB 17761—2024 主要技术内容问答》",
       "issuer": "工业和信息化部",
       "url": "https://www.gov.cn/zhengce/202501/content_6998231.htm",
+      "retrieved_on": "2026-10-14"
+    },
+    "openstd_fulltext_2024": {
+      "kind": "standard_text",
+      "title": "国家标准全文公开系统 GB 17761—2024《电动自行车安全技术规范》全文（在线预览页图，共 43 页）",
+      "issuer": "国家市场监督管理总局、国家标准化管理委员会",
+      "url": "https://openstd.samr.gov.cn/bzgk/std/showGb?type=online&hcno=32E5D633E04B67FB241D100CA2A4A41D",
+      "retrieved_on": "2026-10-14"
+    },
+    "openstd_fulltext_42296": {
+      "kind": "standard_text",
+      "title": "国家标准全文公开系统 GB 42296—2022《电动自行车用充电器安全技术要求》全文（在线预览页图）",
+      "issuer": "国家市场监督管理总局、国家标准化管理委员会",
+      "url": "https://openstd.samr.gov.cn/bzgk/std/showGb?type=online&hcno=BC0D9809C45954F590D4CFDF19EAFF90",
+      "retrieved_on": "2026-10-14"
+    },
+    "openstd_fulltext_43854": {
+      "kind": "standard_text",
+      "title": "国家标准全文公开系统 GB 43854—2024《电动自行车用锂离子蓄电池安全技术规范》全文（在线预览页图）",
+      "issuer": "国家市场监督管理总局、国家标准化管理委员会",
+      "url": "https://openstd.samr.gov.cn/bzgk/std/showGb?type=online&hcno=E14253B5634B9F3E9D243E27E1060A0C",
       "retrieved_on": "2026-10-14"
     },
     "openstd_meta_2024": {
@@ -106,13 +127,13 @@
       "op": "<=",
       "value": "25",
       "unit": "km/h",
-      "clause": null,
-      "clause_status": "pending",
-      "source": "gov_qna_2025",
+      "clause": "6.1.1.1",
+      "clause_status": "verified",
+      "source": "openstd_fulltext_2024",
       "status": "verified",
       "verified_on": "2026-10-14",
-      "clause_excerpt": "最高设计车速不得超过 25 km/h",
-      "notes": "数值经 gov.cn 官方问答逐字核对；条款号待以正式标准文本补录。"
+      "clause_excerpt": "使用电驱动功能行驶时，最高车速不应超过最高设计车速，且最高设计车速不应超过 25 km/h。",
+      "notes": "条款号与数值均以正式标准全文（6.1.1.1 车速限值要求 a)）逐条核对；数值与 gov.cn 官方问答一致。"
     },
     {
       "standard": "GB17761-2024",
@@ -121,13 +142,13 @@
       "op": "==",
       "value": "true",
       "unit": "",
-      "clause": null,
-      "clause_status": "pending",
-      "source": "gov_qna_2025",
+      "clause": "6.1.1.1",
+      "clause_status": "verified",
+      "source": "openstd_fulltext_2024",
       "status": "verified",
       "verified_on": "2026-10-14",
-      "clause_excerpt": "超过 25 km/h 时电动机应停止提供动力输出",
-      "notes": "新增要求；以布尔参数承载（具备该功能为 true）。"
+      "clause_excerpt": "如果车速超过 25 km/h，电动机不应提供动力输出。",
+      "notes": "布尔参数承载（具备该功能为 true）；条款号以正式标准全文 6.1.1.1 a)/b) 核对。"
     },
     {
       "standard": "GB17761-2024",
@@ -136,30 +157,30 @@
       "op": "<=",
       "value": "63",
       "unit": "kg",
-      "clause": null,
-      "clause_status": "pending",
-      "source": "gov_qna_2025",
+      "clause": "6.1.3",
+      "clause_status": "verified",
+      "source": "openstd_fulltext_2024",
       "status": "verified",
       "verified_on": "2026-10-14",
       "applies_if": {"param": "battery_type", "op": "==", "value": "lead_acid"},
-      "clause_excerpt": "将铅蓄电池车型的重量限值放宽至 63 kg",
-      "notes": "仅适用铅蓄电池车型；其他电池类型由 vehicle_mass-other 约束。"
+      "clause_excerpt": "使用铅酸蓄电池的装配完整的电动自行车整车质量应小于或等于 63 kg。",
+      "notes": "仅适用铅酸蓄电池车型；其他类型由 vehicle_mass-other（同为 6.1.3）约束。条款号与数值以正式标准全文核对。"
     },
     {
       "standard": "GB17761-2024",
       "id": "GB17761-2024-vehicle_mass-other",
       "param": "vehicle_mass",
       "op": "<=",
-      "value": null,
+      "value": "55",
       "unit": "kg",
-      "clause": null,
-      "clause_status": "pending",
-      "source": "to_verify",
-      "status": "pending",
-      "verified_on": "",
+      "clause": "6.1.3",
+      "clause_status": "verified",
+      "source": "openstd_fulltext_2024",
+      "status": "verified",
+      "verified_on": "2026-10-14",
       "applies_if": {"not": {"param": "battery_type", "op": "==", "value": "lead_acid"}},
-      "clause_excerpt": "",
-      "notes": "非铅蓄电池车型的质量限值未经官方问答直接确认（问答仅述铅蓄电池车型放宽至 63 kg，其余车型沿用旧值属推断）→ 保持 pending、value 留空，不进入核查路径。"
+      "clause_excerpt": "其他类型的装配完整的电动自行车的整车质量应小于或等于 55 kg。",
+      "notes": "M1 已以正式标准全文 6.1.3 补齐：非铅蓄电池车型沿用 55 kg（前版存疑项已闭环，不再依赖推断）。"
     },
     {
       "standard": "GB17761-2024",
@@ -168,43 +189,43 @@
       "op": "<=",
       "value": "5.5",
       "unit": "%",
-      "clause": null,
-      "clause_status": "pending",
-      "source": "gov_qna_2025",
+      "clause": "6.5.1",
+      "clause_status": "verified",
+      "source": "openstd_fulltext_2024",
       "status": "verified",
       "verified_on": "2026-10-14",
-      "clause_excerpt": "电动自行车使用的塑料的总质量不应超过整车质量的 5.5%",
-      "notes": "新增要求。"
+      "clause_excerpt": "电动自行车使用的塑料的总质量不应超过整车质量的 5.5%。",
+      "notes": "新增要求；条款号以正式标准全文 6.5.1 塑料占比要求核对。"
     },
     {
       "standard": "GB17761-2024",
       "id": "GB17761-2024-nominal_voltage",
       "param": "nominal_voltage",
       "op": "<=",
-      "value": null,
+      "value": "48",
       "unit": "V",
-      "clause": null,
-      "clause_status": "pending",
-      "source": "to_verify",
-      "status": "pending",
-      "verified_on": "",
-      "clause_excerpt": "",
-      "notes": "官方问答未列明蓄电池标称电压数值 → pending、value 留空，不得凭记忆填数。"
+      "clause": "6.3.5",
+      "clause_status": "verified",
+      "source": "openstd_fulltext_2024",
+      "status": "verified",
+      "verified_on": "2026-10-14",
+      "clause_excerpt": "电动自行车的电池组标示的标称电压通常可选择为 24 V、36 V 或 48 V，标示值不应超过 48 V。",
+      "notes": "M1 已以正式标准全文 6.3.5 补齐（官方问答未列明该数值，此前为 pending）。"
     },
     {
       "standard": "GB17761-2024",
       "id": "GB17761-2024-motor_rated_power",
       "param": "motor_rated_power",
       "op": "<=",
-      "value": null,
+      "value": "400",
       "unit": "W",
-      "clause": null,
-      "clause_status": "pending",
-      "source": "to_verify",
-      "status": "pending",
-      "verified_on": "",
-      "clause_excerpt": "",
-      "notes": "官方问答未列明电动机额定功率数值 → pending、value 留空。"
+      "clause": "6.3.3.1",
+      "clause_status": "verified",
+      "source": "openstd_fulltext_2024",
+      "status": "verified",
+      "verified_on": "2026-10-14",
+      "clause_excerpt": "测量此时电动机的输出功率，应小于或等于 400 W。",
+      "notes": "M1 已以正式标准全文 6.3.3.1 电动机额定连续输出功率补齐（此前为 pending）。"
     },
     {
       "standard": "GB17761-2024",
@@ -213,13 +234,13 @@
       "op": "==",
       "value": "true",
       "unit": "",
-      "clause": null,
-      "clause_status": "pending",
-      "source": "gov_qna_2025",
+      "clause": "6.8.1.1",
+      "clause_status": "verified",
+      "source": "openstd_fulltext_2024",
       "status": "verified",
       "verified_on": "2026-10-14",
-      "clause_excerpt": "电池组不得预留扩展车载电池接口或线路",
-      "notes": "防篡改三方面之一；布尔参数（设计满足为 true）。"
+      "clause_excerpt": "电动自行车不应预留扩展车载电池的接口或线路；不应有外设电池组托架。",
+      "notes": "防篡改三方面之一；布尔参数（设计满足为 true）；条款号以正式标准全文 6.8.1.1 核对。"
     },
     {
       "standard": "GB17761-2024",
@@ -228,13 +249,13 @@
       "op": "==",
       "value": "true",
       "unit": "",
-      "clause": null,
-      "clause_status": "pending",
-      "source": "gov_qna_2025",
+      "clause": "6.8.2.1",
+      "clause_status": "verified",
+      "source": "openstd_fulltext_2024",
       "status": "verified",
       "verified_on": "2026-10-14",
-      "clause_excerpt": "控制器不得剪线跳线改装、不得兼容多种输入电压",
-      "notes": "防篡改三方面之一。"
+      "clause_excerpt": "不应设计为通过剪线、跳线等方式进行修改；不应兼容多种电压模式。",
+      "notes": "防篡改三方面之一；条款号以正式标准全文 6.8.2.1 核对。"
     },
     {
       "standard": "GB17761-2024",
@@ -243,13 +264,13 @@
       "op": "==",
       "value": "true",
       "unit": "",
-      "clause": null,
-      "clause_status": "pending",
-      "source": "gov_qna_2025",
+      "clause": "6.8.3",
+      "clause_status": "verified",
+      "source": "openstd_fulltext_2024",
       "status": "verified",
       "verified_on": "2026-10-14",
-      "clause_excerpt": "限速器不得具备修改限速值功能",
-      "notes": "防篡改三方面之一。"
+      "clause_excerpt": "电动自行车应具备限速器防篡改功能。",
+      "notes": "防篡改三方面之一；条款号以正式标准全文 6.8.3 核对。"
     },
     {
       "standard": "GB17761-2018",
@@ -263,8 +284,8 @@
       "source": "gov_qna_2025",
       "status": "verified",
       "verified_on": "2026-10-14",
-      "clause_excerpt": "旧版整车质量限值 55 kg（2024 版问答作为放宽前后的对比基线引述）",
-      "notes": "历史车型对照用；来源为 2024 版官方问答对旧版限值的引述。"
+      "clause_excerpt": "旧版整车质量限值（2024 版问答作为放宽前后的对比基线引述）。",
+      "notes": "历史车型对照用；限值经 2024 版官方问答对旧版限值的引述核对。条款号保持 pending：GB 17761—2018 已废止，openstd 详情页明示“废止标准不提供标准文本阅读服务”，无全文可逐条核对 → 不编造（2024 版前言虽给出条款对应关系，但不足以替代 2018 版正文逐条核对）。"
     },
     {
       "standard": "GB17761-2018",
@@ -278,8 +299,8 @@
       "source": "gov_qna_2025",
       "status": "verified",
       "verified_on": "2026-10-14",
-      "clause_excerpt": "最高设计车速不超过 25 km/h（2018 版延续要求）",
-      "notes": "历史车型对照用；限值经 2024 版官方问答对沿用要求的表述核对。"
+      "clause_excerpt": "最高设计车速不超过 25 km/h（2018 版延续要求）。",
+      "notes": "历史车型对照用；限值 25 km/h 经 2024 版官方问答对沿用要求的表述核对。条款号保持 pending：openstd 对废止标准不提供全文，gov.cn 问答亦不含条款号 → 不编造。"
     },
     {
       "standard": "GB43854-2024",
@@ -290,11 +311,11 @@
       "unit": "",
       "clause": null,
       "clause_status": "pending",
-      "source": "to_verify",
+      "source": "openstd_fulltext_43854",
       "status": "pending",
       "verified_on": "",
       "clause_excerpt": "",
-      "notes": "本标准适用于锂离子蓄电池（适用范围的元数据已知）；但可参数化条款的完整数值与条款号未取得 → pending、value 留空。"
+      "notes": "GB 43854—2024 第 1 章范围规定适用于符合 GB 17761 规定的电动自行车用锂离子蓄电池单体电池和电池组。“电池种类”属适用范围标识而非限值参数 → 首期不建数值条目，保持 pending、value 留空。"
     },
     {
       "standard": "GB43854-2024",
@@ -305,11 +326,26 @@
       "unit": "V",
       "clause": null,
       "clause_status": "pending",
-      "source": "to_verify",
+      "source": "openstd_fulltext_43854",
       "status": "pending",
       "verified_on": "",
       "clause_excerpt": "",
-      "notes": "输出电压限值条款数值未取得 → pending、value 留空。"
+      "notes": "已以 GB 43854—2024 全文核对：该标准通篇为型式试验安全要求（过充/过放/外部短路/挤压/振动/热扩散等“不起火、不爆炸”类判据与绝缘电阻等试验值），未设电池组输出电压的固定数值限值——该指标由 GB 17761—2024 6.3.5 规定（另建条目）→ 首期不参数化，保持 pending、value 留空。"
+    },
+    {
+      "standard": "GB42296-2022",
+      "id": "GB42296-2022-charger-no-load-output-voltage",
+      "param": "charger_no_load_output_voltage",
+      "op": "<=",
+      "value": "42.4",
+      "unit": "V",
+      "clause": "5.5.4",
+      "clause_status": "verified",
+      "source": "openstd_fulltext_42296",
+      "status": "verified",
+      "verified_on": "2026-10-14",
+      "clause_excerpt": "充电器空载输出电压有效值，不应高于 42.4 V。",
+      "notes": "M1 新建：GB 42296—2022 输出接口安全性条款中的可参数化数值限值；条款号与数值以正式标准全文 5.5.4 核对。"
     },
     {
       "standard": "GB42296-2022",
@@ -320,11 +356,11 @@
       "unit": "V",
       "clause": null,
       "clause_status": "pending",
-      "source": "to_verify",
+      "source": "openstd_fulltext_42296",
       "status": "pending",
       "verified_on": "",
       "clause_excerpt": "",
-      "notes": "充电器额定输入电压等基本安全参数条款数值未取得 → pending、value 留空。"
+      "notes": "已以 GB 42296—2022 全文核对：额定输入电压由制造商规定（3.2 定义），标准未设固定限值；5.2.7.1 只规定实际最大输入电流相对额定值的偏差（型式试验判据）→ 首期不参数化，保持 pending、value 留空。"
     },
     {
       "standard": "GB42296-2022",
@@ -335,11 +371,11 @@
       "unit": "",
       "clause": null,
       "clause_status": "pending",
-      "source": "to_verify",
+      "source": "openstd_fulltext_42296",
       "status": "pending",
       "verified_on": "",
       "clause_excerpt": "",
-      "notes": "保护功能要求为定性/试验方法条款 → pending，不入参数化核查（首期范围外）。"
+      "notes": "已以 GB 42296—2022 全文核对：保护功能要求（5.2.5 非正常工作、5.2.6 熔断器、5.4 发热与热失控等）为定性/型式试验条款 → 首期不参数化，保持 pending、value 留空。"
     }
   ],
   "version_anchors": [

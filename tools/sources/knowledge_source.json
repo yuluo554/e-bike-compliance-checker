@@ -1,0 +1,111 @@
+{
+  "_comment": "依据索引来源登记（人工维护；tools/gen_knowledge.py 唯一消费）。登记『限值从哪里来』的可核证要素：发布机关、标准号、条款号、官方 URL、抓取日期、官方快照文件名。快照 sha256 由生成器对 data/knowledge/raw/ 实际文件现算（避免手工登记漂移）。全文页图不落库（体量大且每次抓取重发），只登记逐页 sha256 摘要作为审计线索。",
+  "authorities": {
+    "samr": {
+      "name": "国家市场监督管理总局（国家标准全文公开系统）",
+      "site": "https://openstd.samr.gov.cn"
+    },
+    "miit": {
+      "name": "工业和信息化部",
+      "site": "https://www.gov.cn"
+    },
+    "samr_announcement": {
+      "name": "国家市场监督管理总局（公告）",
+      "site": "https://www.gov.cn/zhengce/zhengceku/"
+    }
+  },
+  "fulltext_retrieval": [
+    {
+      "standard": "GB 17761-2024",
+      "channel": "openstd 在线预览页图（viewGbImg 精灵图还原）",
+      "viewer_url": "https://openstd.samr.gov.cn/bzgk/std/showGb?type=online&hcno=32E5D633E04B67FB241D100CA2A4A41D",
+      "page_count": 43,
+      "page_sha256_digest": "47728cea37cae936732e33cc60172493c04d5aba6262afa9e913aa0c392746fe",
+      "retrieved_on": "2026-10-14",
+      "notes": "43 页全部取得并按精灵图坐标还原；tesseract(chi_sim) 逐页核对条款号与限值。摘要 = 各页 PNG 的 sha256 按页序拼接后再取 sha256。"
+    },
+    {
+      "standard": "GB 43854-2024",
+      "channel": "openstd 在线预览页图（viewGbImg 精灵图还原）",
+      "viewer_url": "https://openstd.samr.gov.cn/bzgk/std/showGb?type=online&hcno=E14253B5634B9F3E9D243E27E1060A0C",
+      "page_count": 19,
+      "page_sha256_digest": "a2b291f13f5be6fc34c35f4df2c46095f3d58325fd6c28de0a486a9fb77ee4bb",
+      "retrieved_on": "2026-10-14",
+      "notes": "19 页全部取得；通篇为型式试验安全要求，未设可参数化固定数值限值（首期不参数化已在规则包 notes 记录）。"
+    },
+    {
+      "standard": "GB 42296-2022",
+      "channel": "openstd 在线预览页图（viewGbImg 精灵图还原）",
+      "viewer_url": "https://openstd.samr.gov.cn/bzgk/std/showGb?type=online&hcno=BC0D9809C45954F590D4CFDF19EAFF90",
+      "page_count": 35,
+      "page_sha256_digest": "419a3874be80115a3414cefb80adf9f5eff0993e75d8fccb58195a56cc4f5ad2",
+      "retrieved_on": "2026-10-14",
+      "notes": "35 页全部取得；据 5.5.4 建『空载输出电压』条目，其余为定性/型式试验条款。"
+    },
+    {
+      "standard": "GB 17761-2018",
+      "channel": "（官方不提供）",
+      "viewer_url": "",
+      "page_count": 0,
+      "page_sha256_digest": "",
+      "retrieved_on": "2026-10-14",
+      "notes": "该标准已废止；openstd 详情页明示『废止标准不提供标准文本阅读服务』，无在线预览通道 → 条款号保持 clause_status=pending，不编造。"
+    }
+  ],
+  "snapshots": [
+    {
+      "file": "gb17761-2024_openstd_meta.html",
+      "kind": "standard_meta",
+      "standard": "GB 17761-2024",
+      "authority": "samr",
+      "url": "https://openstd.samr.gov.cn/bzgk/std/newGbInfo?hcno=32E5D633E04B67FB241D100CA2A4A41D",
+      "retrieved_on": "2026-10-14",
+      "supports": "发布 2024-12-31 / 实施 2025-09-01 / 现行 / 强制性国家标准"
+    },
+    {
+      "file": "gb17761-2018_openstd_meta.html",
+      "kind": "standard_meta",
+      "standard": "GB 17761-2018",
+      "authority": "samr",
+      "url": "https://openstd.samr.gov.cn/bzgk/std/newGbInfo?hcno=72969DAA3DA5795AD2163528FF57166C",
+      "retrieved_on": "2026-10-14",
+      "supports": "发布 2018-05-15 / 实施 2019-04-15 / 废止（明示不提供文本阅读服务）"
+    },
+    {
+      "file": "gb43854-2024_openstd_meta.html",
+      "kind": "standard_meta",
+      "standard": "GB 43854-2024",
+      "authority": "samr",
+      "url": "https://openstd.samr.gov.cn/bzgk/std/newGbInfo?hcno=E14253B5634B9F3E9D243E27E1060A0C",
+      "retrieved_on": "2026-10-14",
+      "supports": "发布 2024-04-25 / 实施 2024-11-01 / 现行 / 强制性国家标准"
+    },
+    {
+      "file": "gb42296-2022_openstd_meta.html",
+      "kind": "standard_meta",
+      "standard": "GB 42296-2022",
+      "authority": "samr",
+      "url": "https://openstd.samr.gov.cn/bzgk/std/newGbInfo?hcno=BC0D9809C45954F590D4CFDF19EAFF90",
+      "retrieved_on": "2026-10-14",
+      "supports": "发布 2022-12-29 / 实施 2023-07-01 / 现行 / 强制性国家标准"
+    },
+    {
+      "file": "gb17761-2024_gov_qna.html",
+      "kind": "gov_qna",
+      "standard": "GB 17761-2024",
+      "authority": "miit",
+      "url": "https://www.gov.cn/zhengce/202501/content_6998231.htm",
+      "retrieved_on": "2026-10-14",
+      "supports": "官方问答逐字数值（车速、整车质量、塑料占比、防篡改三方面、生产/销售过渡期）"
+    },
+    {
+      "file": "gb43854-42296_ccc_announcement_2024-26.html",
+      "kind": "gov_announcement",
+      "standard": "GB 43854-2024 / GB 42296-2022",
+      "authority": "samr_announcement",
+      "url": "https://www.gov.cn/zhengce/zhengceku/202407/content_6960795.htm",
+      "retrieved_on": "2026-10-14",
+      "supports": "市场监管总局公告 2024年第26号（成文 2024-06-25）：锂离子蓄电池/充电器 CCC 认证；2024-10-15 起受理、2025-11-01 起强制"
+    }
+  ]
+}

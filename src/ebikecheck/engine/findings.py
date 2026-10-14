@@ -130,18 +130,22 @@ class CheckResult:
         return tally
 
     def overall(self) -> str:
-        """整体结论：按"最弱优先"聚合，全不适用 → ``not_assessed``。"""
+        """整体结论：按"最弱优先"聚合；``not_applicable`` 不作结论参与。
+
+        ``not_applicable`` 只表示"该规则对本档案不适用"，**不是**对本参数的结论。
+        同一参数常有多条互斥条件规则（如铅酸蓄电池车型与其他电池车型各有整车质量
+        限值），其中一条不适用、另一条给出结论时，结论必须由适用的那条决定；
+        只有**全部**规则都不适用才记 ``not_assessed``，且绝不输出 ``compliant``。
+        """
         states = {item.state for item in self.findings}
         if NON_COMPLIANT in states:
             return NON_COMPLIANT
         if NOT_PROVIDED in states:
             return NOT_PROVIDED
-        if states and states <= {NOT_APPLICABLE}:
-            # 有规则但一条都不适用 = 未评估，**不得**输出 compliant。
+        relevant = states - {NOT_APPLICABLE}
+        if not relevant:
             return NOT_ASSESSED
-        if not states:
-            return NOT_ASSESSED
-        if states <= {COMPLIANT}:
+        if relevant <= {COMPLIANT}:
             return COMPLIANT
         return NOT_ASSESSED
 
