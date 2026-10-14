@@ -20,7 +20,7 @@ classifiers = [
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest>=7", "pyyaml>=6"]
+dev = ["pytest>=7", "pyyaml>=6", "pillow>=10"]
 report = []
 gui = [
   "PySide6>=6.5,<6.7; python_version < '3.9'",
