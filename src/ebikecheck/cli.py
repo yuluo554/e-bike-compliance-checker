@@ -33,6 +33,8 @@ from .service import (
     ruleset_overview,
     scan_dir,
     selfcheck as service_selfcheck,
+    version_diff,
+    version_diff_profile,
 )
 
 EXIT_OK = 0
@@ -245,6 +247,103 @@ def cmd_compare(args) -> int:
     return EXIT_FINDINGS if has_open else EXIT_OK
 
 
+#: 差异类型的中文标签（仅展示层用；语义在引擎层）。
+_DIFF_LABELS = {
+    "added": "新增",
+    "removed": "废止",
+    "tightened": "收紧",
+    "relaxed": "放宽",
+    "value_changed": "数值变化",
+    "operator_changed": "判定方式变化",
+    "unchanged": "不变",
+}
+
+
+def _diff_value_side(side) -> str:
+    if not side:
+        return "无"
+    unit = side.get("unit") or ""
+    cond = side.get("applies_if")
+    cond_text = ""
+    if cond:
+        if "not" in cond and isinstance(cond["not"], dict):
+            cond_text = "（{0}≠{1}时）".format(cond["not"]["param"], cond["not"]["value"])
+        elif "param" in cond:
+            cond_text = "（{0}{1}{2}时）".format(cond["param"], cond["op"], cond["value"])
+    clause = side.get("clause") or "条款待核对"
+    return "{0} {1}{2}  {3}".format(side.get("op"), side.get("value"), unit, cond_text).strip() + " 〔{0}〕".format(clause)
+
+
+def cmd_diff(args) -> int:
+    """版本差异对照（FR-07）：两版规则包 diff + 可选同档案两版结论对照。"""
+    try:
+        payload = version_diff(args.data_dir, args.old_version, args.new_version)
+    except ServiceError as error:
+        print("错误: {0}".format(error), file=sys.stderr)
+        return EXIT_USAGE
+    counts = payload["counts"]
+    lines = [
+        "版本差异对照（{0}）: {1} → {2}".format(
+            payload["standard_family"], payload["old_version_key"], payload["new_version_key"]
+        ),
+        "规则包: {0} ({1}) → {2} ({3})".format(
+            payload["rulesets"]["old"]["file"],
+            payload["rulesets"]["old"]["sha256"][:16] + "…",
+            payload["rulesets"]["new"]["file"],
+            payload["rulesets"]["new"]["sha256"][:16] + "…",
+        ),
+        "实质差异 {0} 项".format(len(payload["entries"]) - counts.get("unchanged", 0)),
+    ]
+    for entry in payload["entries"]:
+        if entry["kind"] == "unchanged":
+            continue
+        lines.append(
+            "  [{0}] {1}  {2}".format(
+                _DIFF_LABELS.get(entry["kind"], entry["kind"]),
+                entry["param"],
+                entry["pairing"],
+            )
+        )
+        lines.append("      旧: {0}".format(_diff_value_side(entry["old_side"])))
+        lines.append("      新: {0}".format(_diff_value_side(entry["new_side"])))
+    _emit(payload, args.json, lines)
+    return EXIT_OK
+
+
+def cmd_diff_profile(args) -> int:
+    """同档案两版结论对照（FR-07 动态半边；规则表差异用 ``diff`` 子命令看）。"""
+    try:
+        payload = version_diff_profile(args.profile, args.data_dir)
+    except ServiceError as error:
+        print("错误: {0}".format(error), file=sys.stderr)
+        return EXIT_USAGE
+    versions = payload["versions"]
+    lines = [
+        "同档案两版结论对照: {0}（{1} vs {2}）".format(
+            payload["profile_id"], versions[0], versions[-1]
+        ),
+        "档案 sha256: {0}".format(payload["profile_sha256"]),
+    ]
+    has_change = False
+    for scope in payload["scopes"]:
+        lines.append(
+            "—— {0}维度: {1} → {2}".format(
+                _SCOPE_LABELS.get(scope["scope"], scope["scope"]),
+                scope["standard_old"],
+                scope["standard_new"],
+            )
+        )
+        for row in scope["state_changes"]:
+            has_change = True
+            lines.append(
+                "  {0:<28} {1} → {2}".format(row["param"], row["old_state"], row["new_state"])
+            )
+    if not has_change:
+        lines.append("  两版结论完全一致（逐参数比对无变化）")
+    _emit(payload, args.json, lines)
+    return EXIT_OK
+
+
 def cmd_bench(args) -> int:
     from .benchmark_runner import run_bench
 
@@ -310,6 +409,23 @@ def build_parser() -> argparse.ArgumentParser:
         help="显式指定标准版本键（跳过日期锚定）",
     )
     p_compare.set_defaults(func=cmd_compare)
+
+    p_diff = sub.add_parser(
+        "diff", parents=[common_data], help="两版规则包差异对照（从规则包 diff 生成）"
+    )
+    p_diff.add_argument("--old", dest="old_version", default=None, help="旧版版本键（缺省取最早一版）")
+    p_diff.add_argument("--new", dest="new_version", default=None, help="新版版本键（缺省取最新一版）")
+    p_diff.add_argument("--json", action="store_true", help="输出机读 JSON")
+    p_diff.set_defaults(func=cmd_diff)
+
+    p_diffp = sub.add_parser(
+        "diff-profile",
+        parents=[common_data],
+        help="同一档案在两版规则下逐参数结论对照",
+    )
+    p_diffp.add_argument("profile", help="车型档案 JSON 路径")
+    p_diffp.add_argument("--json", action="store_true", help="输出机读 JSON")
+    p_diffp.set_defaults(func=cmd_diff_profile)
 
     p_bench = sub.add_parser("bench", parents=[common_data], help="内置评测基准")
     p_bench.add_argument("--only", default=None, help="只跑指定套件（未知名 → 退出码 2）")

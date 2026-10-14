@@ -478,6 +478,135 @@ def _results_of_scan(
     return results
 
 
+# ---- M4-2 版本差异对照（FR-07） ----
+
+#: 差异对照的作用域范围：两版整车分册属同一标准族，逐族比对。
+DIFF_FAMILY = "GB17761"
+
+
+def version_diff(
+    data_dir: Optional[str] = None,
+    old_version_key: Optional[str] = None,
+    new_version_key: Optional[str] = None,
+) -> Dict[str, Any]:
+    """两版规则包 diff → 差异表（**从规则包生成，非手写**，plan/04 §6.3）。
+
+    - 版本键缺省取 manifest.version_anchors 的**全部**可用键按时间排序的两端；
+    - 只在同一标准族内比较（跨标准无可比性，不做）；
+    - 每个参数按 ``applies_if`` 配对（含"无条件 vs 条件拆分"的分支配对），
+      差异类型 ∈ {新增/废止/收紧/放宽/数值变化/运算符变化/不变}；
+    - 同时返回两版分册坐标（file + sha256），差异表可溯源到规则包指纹。
+    """
+    from .engine import version_diff as diff_mod
+
+    resolved = resolve_data_dir(data_dir)
+    manifest = rules_mod.load_manifest(resolved)
+    anchors = version_mod.available_version_keys(manifest.version_anchors)
+    if len(anchors) < 2:
+        raise ServiceError(
+            "manifest.version_anchors 可用版本不足两版，无法对照: {0}".format(anchors)
+        )
+    # 版本先后按分册**发布日**排（锚点表顺序不承诺时间序），旧→新 = 发布早→发布晚。
+    published = {}
+    for entry in manifest.rulesets:
+        ruleset = rules_mod.load_ruleset_by_key(resolved, manifest, entry["version_key"])
+        published[entry["version_key"]] = str(ruleset.standard.get("published", ""))
+    anchors = sorted(anchors, key=lambda key: published.get(key, ""))
+    old_key = old_version_key or anchors[0]
+    new_key = new_version_key or anchors[-1]
+    for key in (old_key, new_key):
+        if key not in anchors:
+            raise ServiceError(
+                "未知版本键 {0!r}；可用: {1}".format(key, ", ".join(anchors))
+            )
+    if old_key == new_key:
+        raise ServiceError("两版版本键相同，无从对照: {0}".format(old_key))
+
+    old_ruleset = rules_mod.load_ruleset_by_key(resolved, manifest, old_key)
+    new_ruleset = rules_mod.load_ruleset_by_key(resolved, manifest, new_key)
+    if old_ruleset.scope != new_ruleset.scope:
+        raise ServiceError(
+            "两版分册作用域不同（{0} vs {1}），不在同一标准族内".format(
+                old_ruleset.scope, new_ruleset.scope
+            )
+        )
+    diff = diff_mod.diff_rulesets(
+        DIFF_FAMILY if old_ruleset.scope == rules_mod.SCOPE_VEHICLE else old_ruleset.scope,
+        old_key,
+        old_ruleset.effective_rules(),
+        new_key,
+        new_ruleset.effective_rules(),
+    )
+    payload = diff.to_dict()
+    payload["rulesets"] = {
+        "old": {"file": old_ruleset.file_name, "sha256": old_ruleset.sha256},
+        "new": {"file": new_ruleset.file_name, "sha256": new_ruleset.sha256},
+    }
+    payload["manifest_sha256"] = manifest.sha256
+    return payload
+
+
+def version_diff_profile(
+    profile_path: str,
+    data_dir: Optional[str] = None,
+) -> Dict[str, Any]:
+    """同档案两版各判一次 + 参数级结论对照（FR-07 的"实际差异"半边）。
+
+    复用 :func:`check_profile_all_versions`（数据侧 M3 已备好），逐作用域
+    抽出参数级结论差异 —— 规则表 diff（静态）与档案结论 diff（动态）拼成
+    一份报告载荷，两半都从数据生成。
+    """
+    from .engine import version_diff as diff_mod
+
+    resolved = resolve_data_dir(data_dir)
+    manifest = rules_mod.load_manifest(resolved)
+    profile = load_profile(profile_path)
+    results = check_profile_all_versions(profile_path, resolved)
+    if len(results) < 2:
+        raise ServiceError("可用版本不足两版，无法做同档案两版对照")
+    # 旧→新 = 分册发布早→发布晚（与 :func:`version_diff` 同一排序依据）。
+    published = {}
+    for entry in manifest.rulesets:
+        ruleset = rules_mod.load_ruleset_by_key(resolved, manifest, entry["version_key"])
+        published[entry["version_key"]] = str(ruleset.standard.get("published", ""))
+    results = sorted(results, key=lambda item: published.get(item[0], ""))
+
+    per_scope: List[Dict[str, Any]] = []
+    scopes: List[str] = []
+    for _key, result in results:
+        for dimension in result.dimensions:
+            if dimension.scope not in scopes:
+                scopes.append(dimension.scope)
+    for scope in scopes:
+        old_dimension = None
+        new_dimension = None
+        for key, result in results:
+            dimension = result.dimension(scope)
+            if dimension is not None:
+                if key == results[0][0]:
+                    old_dimension = dimension
+                if key == results[-1][0]:
+                    new_dimension = dimension
+        if old_dimension is None or new_dimension is None:
+            continue
+        per_scope.append(
+            {
+                "scope": scope,
+                "standard_old": old_dimension.standard,
+                "standard_new": new_dimension.standard,
+                "state_changes": diff_mod.diff_from_findings(old_dimension, new_dimension),
+            }
+        )
+    return {
+        "schema": "ebikecheck.version_diff.profile/1.0",
+        "profile_id": profile.profile_id,
+        "profile_sha256": profile.sha256,
+        "versions": [key for key, _result in results],
+        "version_anchor": dict(results[-1][1].version_anchor),
+        "scopes": per_scope,
+    }
+
+
 def ruleset_overview(data_dir: Optional[str] = None) -> Dict[str, Any]:
     """规则库概览（报告"规则包坐标"与门控"未启用"节的数据来源）。"""
     resolved = resolve_data_dir(data_dir)
