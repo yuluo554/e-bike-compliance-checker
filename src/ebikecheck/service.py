@@ -641,6 +641,74 @@ def ruleset_overview(data_dir: Optional[str] = None) -> Dict[str, Any]:
     }
 
 
+# ---- M5-1 报告导出（单一渲染源；FR-06） ----
+
+
+def export_report(
+    profile_path: str,
+    out_dir: str,
+    data_dir: Optional[str] = None,
+    version_key: Optional[str] = None,
+    generated_at: str = "",
+) -> Dict[str, Any]:
+    """导出合规核查报告（MD + XLSX，单一渲染源，plan/04 §7）。
+
+    纪律：
+
+    - **evidence_chain 是前置硬门**（N-7）：先装配证据链（内部跑溯源硬断言，
+      失败抛 :class:`TraceabilityError` 拒绝导出）；
+    - **生成时间取输入侧**：``generated_at`` 显式参数，绝不取系统时钟 →
+      同输入两次导出逐字节一致；
+    - **无外链**：章节装配后跑 :func:`report.sections.assert_no_external_links`，
+      任何 ``http(s)://`` 进正文即拒（来源 URL 只渲染成"来源编号"）；
+    - 两渲染器**只消费** ``report_sections()``，两格式内容一致是结构性质。
+    """
+    from .report.markdown import render_markdown
+    from .report.sections import assert_no_external_links, report_sections
+    from .report.xlsx import build_xlsx
+
+    resolved = resolve_data_dir(data_dir)
+    manifest = rules_mod.load_manifest(resolved)
+    profile = load_profile(profile_path)
+    result = check_profile_obj(profile, resolved, manifest, version_key)
+    evidence = evidence_chain(result)  # 前置硬门：溯源断言失败即拒导出
+    overview = ruleset_overview(resolved)
+    diff = version_diff(resolved)
+
+    sections = report_sections(
+        result=result,
+        profile_raw=profile.raw,
+        overview=overview,
+        evidence=evidence,
+        diff_payload=diff,
+        generated_at=generated_at,
+    )
+    assert_no_external_links(sections)
+
+    title = "电动自行车合规核查报告 — {0}（{1}）".format(
+        result.profile_id, result.version_key
+    )
+    markdown_text = render_markdown(title, sections)
+    xlsx_bytes = build_xlsx(title, sections)
+
+    md_path = os.path.join(out_dir, "{0}.md".format(result.profile_id))
+    xlsx_path = os.path.join(out_dir, "{0}.xlsx".format(result.profile_id))
+    from .io_utils import sha256_bytes, write_bytes, write_text
+
+    write_text(md_path, markdown_text)
+    write_bytes(xlsx_path, xlsx_bytes)
+    return {
+        "schema": "ebikecheck.report/1.0",
+        "markdown_path": md_path,
+        "xlsx_path": xlsx_path,
+        "markdown_sha256": sha256_bytes(markdown_text.encode("utf-8")),
+        "xlsx_sha256": sha256_bytes(xlsx_bytes),
+        "evidence": evidence,
+        "overall": result.overall(),
+        "generated_at": generated_at,
+    }
+
+
 # ---- M3-4 证据链（FR-11） ----
 
 

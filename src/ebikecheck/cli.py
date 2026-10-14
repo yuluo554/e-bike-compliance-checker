@@ -29,6 +29,7 @@ from .service import (
     ServiceError,
     check_profile,
     compare_rounds,
+    export_report,
     resolve_data_dir,
     ruleset_overview,
     scan_dir,
@@ -344,6 +345,51 @@ def cmd_diff_profile(args) -> int:
     return EXIT_OK
 
 
+def cmd_export(args) -> int:
+    """报告导出（FR-06）：MD + XLSX 单一渲染源，退出码看统一结论。"""
+    try:
+        payload = export_report(
+            args.profile,
+            args.out_dir,
+            args.data_dir,
+            args.version_of,
+            generated_at=args.generated_at,
+        )
+    except ServiceError as error:
+        print("错误: {0}".format(error), file=sys.stderr)
+        return EXIT_USAGE
+    lines = [
+        "报告导出: {0}（结论 {1}）".format(
+            payload["evidence"]["profile_id"],
+            _STATE_LABELS.get(payload["overall"], payload["overall"]),
+        ),
+        "Markdown: {0} (sha256 {1}…)".format(
+            payload["markdown_path"], payload["markdown_sha256"][:16]
+        ),
+        "XLSX:     {0} (sha256 {1}…)".format(
+            payload["xlsx_path"], payload["xlsx_sha256"][:16]
+        ),
+        "生成时间（输入侧）: {0}".format(payload["generated_at"] or "（未提供）"),
+    ]
+    _emit(payload, args.json, lines)
+    return EXIT_FINDINGS if payload["overall"] == NON_COMPLIANT else EXIT_OK
+
+
+def cmd_gui(args) -> int:
+    """桌面界面（M5-2）：**惰性导入** PySide6/gui —— 顶层不得引重件（AST 门禁）。"""
+    try:
+        from .gui.app import launch
+    except ImportError as error:
+        print(
+            "错误: 桌面组件不可用（请安装 gui extras: pip install -e .[gui]）: {0}".format(
+                error
+            ),
+            file=sys.stderr,
+        )
+        return EXIT_USAGE
+    return launch()
+
+
 def cmd_bench(args) -> int:
     from .benchmark_runner import run_bench
 
@@ -427,6 +473,29 @@ def build_parser() -> argparse.ArgumentParser:
     p_diffp.add_argument("--json", action="store_true", help="输出机读 JSON")
     p_diffp.set_defaults(func=cmd_diff_profile)
 
+    p_export = sub.add_parser(
+        "export", parents=[common_data], help="导出合规核查报告（Markdown + XLSX）"
+    )
+    p_export.add_argument("profile", help="车型档案 JSON 路径")
+    p_export.add_argument("--out-dir", default=".", help="报告输出目录（缺省当前目录）")
+    p_export.add_argument(
+        "--generated-at",
+        dest="generated_at",
+        default="",
+        help="生成时间标注（输入侧显式参数；不取系统时钟以保证逐字节可复现）",
+    )
+    p_export.add_argument("--json", action="store_true", help="输出机读 JSON")
+    p_export.add_argument(
+        "--version-of",
+        dest="version_of",
+        default=None,
+        help="显式指定标准版本键（跳过日期锚定）",
+    )
+    p_export.set_defaults(func=cmd_export)
+
+    p_gui = sub.add_parser("gui", parents=[common_data], help="桌面界面（PySide6）")
+    p_gui.set_defaults(func=cmd_gui)
+
     p_bench = sub.add_parser("bench", parents=[common_data], help="内置评测基准")
     p_bench.add_argument("--only", default=None, help="只跑指定套件（未知名 → 退出码 2）")
     p_bench.add_argument("--json", action="store_true", help="输出机读 JSON")
@@ -459,4 +528,11 @@ def main(argv: Optional[List[str]] = None) -> int:
 
 
 #: 供需要定位数据根的外部脚本复用。
-__all__ = ["main", "build_parser", "resolve_data_dir", "EXIT_OK", "EXIT_FINDINGS", "EXIT_USAGE"]
+__all__ = [
+    "main",
+    "build_parser",
+    "resolve_data_dir",
+    "EXIT_OK",
+    "EXIT_FINDINGS",
+    "EXIT_USAGE",
+]

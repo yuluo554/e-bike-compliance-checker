@@ -6,7 +6,7 @@
 
 **全本地处理、零上传**：车型参数与供应链信息可能含商业敏感信息，工具默认不联网、不做任何数据外发。
 
-> 状态：🚧 **M4 基准完整已完成（2026-10-14）**——M3 字段映射与对账之上，M4 新增：**版本差异对照**（`diff` / `diff-profile` 子命令：差异表**从两版规则包 diff 生成**，逐参数按 `applies_if` 配对，差异类型 ∈ 新增/废止/收紧/放宽/数值变化/判定方式变化；同一档案两版逐参数结论对照）。内置评测基准**八套件全绿**，192 项测试 3.8/3.12 双绿。
+> 状态：🚧 **M5 桌面交付已完成（2026-10-14）**——M4 基准完整之上，M5 新增：**报告导出**（`export` 子命令：Markdown + XLSX 单一渲染源、两格式逐项对等、逐字节可复现、无外链、§3 参数来源块 + §8 证据指纹）、**PySide6 桌面界面**（`gui` 子命令：单车核查 / 批量扫描 / 跨轮对账 / 版本差异四页签，零判定逻辑只调 service）、**PyInstaller onedir 双 exe 打包**（冻结态自检：数据目录落在 exe 目录内）。内置评测基准**八套件全绿**，226 项测试 3.8/3.12 双绿。技术报告见 [docs/技术报告.md](docs/技术报告.md)。
 
 ---
 
@@ -60,28 +60,40 @@ python -m pip install -U pip
 python -m pip install -e ".[dev]"
 ```
 
-**已可用**（M0 骨架 + M1 数据 + M2 三维引擎 + M3 映射与对账 + M4 版本差异对照）：
+**已可用**（M0 骨架 + M1 数据 + M2 三维引擎 + M3 映射与对账 + M4 版本差异对照 + M5 报告导出与桌面）：
 
 ```bash
-ebikecheck selfcheck                 # 数据目录定位 + 规则库加载 + status 门控计数
+ebikecheck selfcheck                 # 数据目录定位 + 规则库加载 + status 门控计数（+ 冻结态自检）
 ebikecheck check <车型.json>         # 单车型三维核查：整车 + 电池 + 充电器 + 统一结论（--json / --version-of）
 ebikecheck scan <目录>               # 批量扫描：失败件单列原因码（不改退出码语义），与越限件分列
 ebikecheck compare <上轮目录> <本轮目录>  # 跨轮对账三集合：新增越限 / 已整改 / 持续越限
 ebikecheck diff                      # 两版规则包差异对照（从规则包 diff 生成；--old/--new 显式指定）
 ebikecheck diff-profile <车型.json>  # 同一档案在两版规则下逐参数结论对照
+ebikecheck export <车型.json> --out-dir <目录>   # 报告导出（Markdown + XLSX 单一渲染源；--generated-at 输入侧时间）
+ebikecheck gui                       # 桌面界面（PySide6 四页签；需 extras: pip install -e ".[gui]"）
 ebikecheck rules                     # 规则库概览与逐册门控计数
 ebikecheck bench                     # 内置评测基准（八套件，门槛自 manifest 下发）
 ebikecheck version
-python -m pytest -q                  # 测试套件
+python -m pytest -q                  # 测试套件（226 项）
 python tools/gen_rulesets.py --check # 规则包冻结守门（再生成逐字节一致）
 python tools/gen_synthetic.py --check# 真值库冻结守门
 python tools/gen_mapping.py --check  # 字段映射表冻结守门
 python tools/gen_knowledge.py --check# 依据索引冻结守门
 python tools/check_zero_literals.py  # 零字面量门禁
 python tools/audit_desensitize.py    # 脱敏审计（三模式 + selftest）
+python tools/gen_demo_assets.py      # 演示素材程序化产出（PNG + GIF，两次生成 sha256 一致）
 ```
 
-**规划中**（M5–M6）：`report`（Markdown/XLSX 导出）、`gui`（桌面）、发布。
+**打包**（onedir 双 exe，需 extras: `pip install -e ".[build]"`）：
+
+```bash
+py -3.12 -m PyInstaller tools/ebikecheck.spec --noconfirm
+# 产物 build/dist/ebikecheck-desktop/：
+#   ebikecheck-gui.exe（图形界面）+ ebikecheck-cli.exe（命令行）+ _internal/data（冻结态数据随包走）
+# 冻结态自检：ebikecheck-cli.exe selfcheck → frozen=True / data_dir_within_exe_dir=True
+```
+
+**规划中**（M6）：脱敏发布 GitHub + Release（exe 附件 + sha256 留档）。
 
 ### CLI 退出码
 
@@ -102,7 +114,7 @@ python tools/audit_desensitize.py    # 脱敏审计（三模式 + selftest）
 | M2 | 限值矩阵引擎完整：三维（整车/电池/充电器）判定 + 跨标准统一结论 + 边界枚举与规则驱动基准 | ✅ 2026-10-14 完成（133 测试 3.8/3.12 双绿；bench 六套件全绿 17/17·26/26·26/26·4/4·12/12·1/1；见 [05 §四 M2](plan/05-数据计划与里程碑.md)） |
 | M3 | 字段映射与对账：列名映射 + 批量扫描 + 跨轮对账 + 报告/证据链 | ✅ 2026-10-14 完成（162 测试 3.8/3.12 双绿；bench 八套件全绿 84/84·3/3；见 [05 §四 M3](plan/05-数据计划与里程碑.md)） |
 | M4 | 基准完整：八套件 + 探活，指标进 README；版本差异对照报告 | ✅ 2026-10-14 完成（192 测试 3.8/3.12 双绿；`diff`/`diff-profile` 从两版规则包 diff 生成；见 [05 §四 M4](plan/05-数据计划与里程碑.md)） |
-| M5 | 桌面交付：PySide6 界面 + PyInstaller 打包 + 报告导出 + 技术报告 | ⬜ |
+| M5 | 桌面交付：报告导出（MD/XLSX 单一渲染源）+ PySide6 界面 + PyInstaller 打包 + 技术报告 + 演示素材 | ✅ 2026-10-14 完成（226 测试 3.8/3.12 双绿；报告两格式对等/逐字节可复现/无外链；双 exe 中立目录冻结态自检通过；见 [docs/技术报告.md](docs/技术报告.md)） |
 | M6 | 脱敏发布 GitHub + Release（exe）+ 收尾固化 | ⬜ |
 
 > **M0 诚实说明**：CI workflow 已就位并通过本地等价校验（YAML 可解析、矩阵覆盖断言、`fetch-depth: 0` 断言），但**本地无远端、未推送 = 未跑过 CI**，故不能记"CI 绿"；真实 CI 结论待首推后回填。
@@ -123,8 +135,19 @@ python tools/audit_desensitize.py    # 脱敏审计（三模式 + selftest）
 | `mapping` | **规则驱动** | 字段映射：全部已登记变体精确命中 + 歧义列名判 uncertain + 未登记判 unmapped | 84/84 | 0.98 | ✅ True |
 | `reconcile` | 样本驱动 | 跨轮对账三集合语义端到端（真值库构造整改/新增/缺失件场景） | 3/3 | 1.0 | ✅ True |
 
-总耗时 0.061s（上限 1.0s，随 manifest 下发；`bench_max_seconds`）。`boundary` / `rule_driven` /
+总耗时 0.059s（上限 1.0s，随 manifest 下发；`bench_max_seconds`）。`boundary` / `rule_driven` /
 `dimensions` / `mapping` **不读真值库**，只从规则包/映射表推导 —— 新增规则或映射条目自动进枚举，无需改基准代码。
+
+## 报告导出与桌面界面（M5）
+
+**报告导出**（`export` 子命令 / GUI 一键导出）：
+
+- 单一渲染源：九章节结构化载荷（报告头/输入事实/参数来源块/逐项结论/越限与整改/未评估与门控排除/版本坐标与两版差异/证据指纹/免责声明），Markdown 与 XLSX 两渲染器只消费它 → 两格式内容逐项对等（测试断言）；
+- 无外链：来源 URL 只渲染成"来源编号"，MD 正文与 XLSX 单元格不得出现 `http(s)://`（离线可审计、导出不外发）；
+- 逐字节可复现：生成时间取输入侧（`--generated-at`），XLSX 自写最小 OOXML（`ZIP_STORED` + 固定时间戳），同输入两次导出 sha256 一致；
+- 证据链前置硬门：`§8 证据指纹` 直接消费 `service.evidence_chain`（内部先跑溯源完整性断言，失败即拒绝导出）。
+
+**桌面界面**（`gui` 子命令，PySide6）：单车核查 / 批量扫描 / 跨轮对账 / 版本差异四页签；**零判定逻辑**——取数全部经 `service`（与 CLI 同一事实源），AST 门禁禁止 import 引擎层。安装：`pip install -e ".[gui]"`。
 
 ## 版本差异对照（FR-07）
 
@@ -156,8 +179,9 @@ data/rules/          限值规则包（生成器冻结产物，禁手改）
 data/mapping/        字段映射表 + 单位别名表（生成器冻结产物）
 data/knowledge/      依据索引 + 官方快照（生成器冻结产物 + 逐份 sha256）
 data/truth/          合成车型档案 + 真值库（生成器冻结产物）
-tools/               生成器 / 门禁 / 脱敏审计器
-src/ebikecheck/      包（engine/ 为确定性内核，零第三方依赖）
+docs/                技术报告 + 演示素材（程序化产出，docs/assets/）
+tools/               生成器 / 门禁 / 脱敏审计器 / 打包 spec / 素材生成器
+src/ebikecheck/      包（engine/ 为确定性内核，零第三方依赖；gui/ 为 PySide6 界面）
 tests/               pytest 测试套件
 benchmark 套件       内置评测基准（src/ebikecheck/benchmark/）
 ```
