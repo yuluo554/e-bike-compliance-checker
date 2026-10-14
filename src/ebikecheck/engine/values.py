@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import os
 from decimal import Decimal
 from typing import Any, Dict, Optional, Tuple
 
@@ -16,6 +17,12 @@ from ..io_utils import decode_decimal
 
 #: 单位换算表：``目标单位 -> {源单位: 乘数}``。
 #: 只登记**显式无损**的十进换算；英里、市斤等未登记即视为不可换算。
+#:
+#: 口径（M2-5 决策 D-42）：**换算系数留在引擎内**（它是数学常量，不是领域限值，
+#: 引擎层因此保持零数据文件依赖）；**单位别名表来自 ``data/mapping/mapping.json``**
+#: （``unit_aliases``，数据侧唯一来源），经 :func:`unit_alias_index` 反转后由
+#: :func:`resolve_unit` 把档案里写的中文/大小写变体（``公里/小时``、``KM/H``）
+#: 归一到本表的规范单位。两表由 ``test_unit_alias_table_covers_factor_units`` 对账。
 UNIT_FACTORS: Dict[str, Dict[str, str]] = {
     "kg": {"kg": "1", "g": "0.001", "t": "1000"},
     "g": {"g": "1", "kg": "1000", "mg": "0.001"},
@@ -27,12 +34,65 @@ UNIT_FACTORS: Dict[str, Dict[str, str]] = {
     "‰": {"‰": "1", "%": "10"},
     "V": {"V": "1", "mV": "0.001"},
     "W": {"W": "1", "kW": "1000"},
+    # 只登记同一性换算（无跨单位换算需求）；登记在册是为了让"单位别名表里的
+    # 规范单位都确实被引擎认识"，未登记的跨单位换算仍一律 not_provided。
+    "Ah": {"Ah": "1"},
     # 无量纲/枚举参数用空串占位，比较不走数值通路。
     "": {"": "1"},
 }
 
 #: 视为"无量纲"的单位标记（枚举、布尔、文本参数）。
 DIMENSIONLESS_UNITS = frozenset({"", "none", "text", "bool"})
+
+#: 单位别名索引缓存（``data/mapping/mapping.json::unit_aliases`` 反转）。
+_UNIT_ALIAS_CACHE: Dict[str, Any] = {"path": None, "index": {}}
+
+
+def unit_alias_index(data_dir: Optional[str] = None) -> Dict[str, str]:
+    """``{别名: 规范单位}`` —— 来自 ``data/mapping/mapping.json``（数据侧唯一来源）。
+
+    无数据目录或文件缺失时返回空表（**不报错**）：别名归一属"锦上添花"，
+    缺它只该退化为"按原样比对"，不该让整条核查路径崩掉。
+    """
+    if data_dir is None:
+        from ..paths import find_data_dir
+
+        data_dir = find_data_dir()
+    if not data_dir:
+        return {}
+    path = os.path.join(data_dir, "mapping", "mapping.json")
+    if _UNIT_ALIAS_CACHE["path"] == path and _UNIT_ALIAS_CACHE["index"]:
+        return dict(_UNIT_ALIAS_CACHE["index"])
+    if not os.path.isfile(path):
+        return {}
+    try:
+        from ..io_utils import read_json
+
+        raw = read_json(path)
+    except Exception:
+        return {}
+    index: Dict[str, str] = {}
+    for canonical, aliases in sorted((raw.get("unit_aliases") or {}).items()):
+        for alias in aliases or []:
+            index.setdefault(str(alias), str(canonical))
+    _UNIT_ALIAS_CACHE["path"] = path
+    _UNIT_ALIAS_CACHE["index"] = index
+    return dict(index)
+
+
+def resolve_unit(token: str, aliases: Optional[Dict[str, str]] = None) -> str:
+    """把单位书写变体归一到规范单位（``公里/小时`` → ``km/h``、``KM/H`` → ``km/h``）。
+
+    已在换算表中的规范单位原样返回；别名表未登记的**保持原样**（于是仍然
+    "不可换算"，落到 ``not_provided(unit_incompatible)``，绝不臆测）。
+    """
+    text = (token or "").strip()
+    if text in DIMENSIONLESS_UNITS:
+        return text
+    if text in UNIT_FACTORS:
+        return text
+    table = aliases if aliases is not None else unit_alias_index()
+    return table.get(text, text)
 
 #: 各单位的"最小计量单位"（边界枚举用）。未登记者按 0.1 处理。
 UNIT_EPSILON: Dict[str, str] = {
@@ -66,9 +126,12 @@ def normalize_unit(
 
     返回 ``(数值, 是否降级)``；无法换算时抛 :class:`UnitError`。
     降级 = 发生了非平凡换算（源单位与目标单位不同），语义上"可判定但需留意"。
+
+    档案侧单位先经 :func:`resolve_unit` 归一别名（``公里/小时`` → ``km/h``），
+    故别名书写不再误判为"不可换算"；别名表未登记的写法仍按不可换算处理。
     """
-    target = (target_unit or "").strip()
-    source = (source_unit or "").strip()
+    target = resolve_unit(target_unit)
+    source = resolve_unit(source_unit)
     if target in DIMENSIONLESS_UNITS and source in DIMENSIONLESS_UNITS:
         return None, False  # 无量纲参数不走数值通路
     if not source:

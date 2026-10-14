@@ -52,21 +52,30 @@ def load_profile(path: str) -> Profile:
     if not os.path.isfile(path):
         raise ProfileError("档案文件不存在: {0}".format(path))
     raw = read_json(path)
+    return profile_from_dict(raw, path=path, sha256=sha256_file(path))
+
+
+def profile_from_dict(raw: Any, path: str = "", sha256: str = "") -> Profile:
+    """从内存字典构建档案（基准层与测试用；不落盘）。
+
+    与 :func:`load_profile` 走**同一套结构校验** —— 否则基准层会放行
+    落盘通路会拒的档案，"基准全绿"就证明不了输入契约。
+    """
     if not isinstance(raw, dict):
-        raise ProfileError("档案顶层必须是对象: {0}".format(path))
+        raise ProfileError("档案顶层必须是对象: {0}".format(path or "<内存>"))
     profile_id = raw.get("profile_id")
     if not profile_id or not isinstance(profile_id, str):
-        raise ProfileError("档案缺少 profile_id（string）: {0}".format(path))
+        raise ProfileError("档案缺少 profile_id（string）: {0}".format(path or "<内存>"))
     params = raw.get("params")
     if params is None:
-        raise ProfileError("档案缺少 params 对象: {0}".format(path))
+        raise ProfileError("档案缺少 params 对象: {0}".format(path or "<内存>"))
     if not isinstance(params, dict):
-        raise ProfileError("档案 params 必须是对象: {0}".format(path))
+        raise ProfileError("档案 params 必须是对象: {0}".format(path or "<内存>"))
     for name, item in params.items():
         if not isinstance(item, dict):
             raise ProfileError(
-                "参数 {0} 必须是对象（含 value/unit）: {1}".format(name, path)
+                "参数 {0} 必须是对象（含 value/unit）: {1}".format(name, path or "<内存>")
             )
         if "value" not in item:
-            raise ProfileError("参数 {0} 缺少 value 字段: {1}".format(name, path))
-    return Profile(path=path, sha256=sha256_file(path), profile_id=profile_id, raw=raw)
+            raise ProfileError("参数 {0} 缺少 value 字段: {1}".format(name, path or "<内存>"))
+    return Profile(path=path, sha256=sha256, profile_id=profile_id, raw=raw)

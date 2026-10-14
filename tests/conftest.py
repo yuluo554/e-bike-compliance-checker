@@ -58,7 +58,7 @@ def param(value, unit=""):
 
 
 def load_rule_values(data_dir):
-    """读取规则包里某几个关键限值（测试断言用，不写死数值）。"""
+    """读取**整车册**里某几个关键限值（测试断言用，不写死数值）。"""
     with open(
         os.path.join(data_dir, "rules", "gb17761-2024.json"), "r", encoding="utf-8"
     ) as handle:
@@ -67,6 +67,24 @@ def load_rule_values(data_dir):
     for rule in raw["rules"]:
         if rule["status"] == "verified" and rule["value"] is not None:
             out[rule["param"]] = rule
+    return out
+
+
+def load_all_rule_values(data_dir):
+    """读取**全部规则分册**的生效条目（三维核查后"全参数合规"必须跨册推导）。
+
+    返回 ``{param: rule}``；同参数多条（互斥条件规则）以先到者为准。
+    """
+    out = {}
+    rules_dir = os.path.join(data_dir, "rules")
+    for name in sorted(os.listdir(rules_dir)):
+        if not name.endswith(".json") or name == "manifest.json":
+            continue
+        with open(os.path.join(rules_dir, name), "r", encoding="utf-8") as handle:
+            raw = json.load(handle)
+        for rule in raw["rules"]:
+            if rule["status"] == "verified" and rule["value"] is not None:
+                out.setdefault(rule["param"], rule)
     return out
 
 

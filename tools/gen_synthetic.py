@@ -359,12 +359,18 @@ def build_cases(rulesets):
         )
 
     # ---- 干净档案：全参数达标 → 应零命中 ----
+    # 三维（M2）后"整体符合"要求**全部参与聚合的维度**都符合：电池册首期零生效
+    # 规则（不参与聚合），但充电器册有空载输出电压条目 → 必须一并补成合规值。
     seq += 1
+    clean_view = {}
+    for view in rulesets.values():
+        for param_name, limit in view.items():
+            clean_view.setdefault(param_name, limit)
     clean_params = _fill_compliant(
         {
             P_BATTERY: _p("lead_acid", ""),
         },
-        {key: value for key, value in limb.items() if key != P_BATTERY},
+        {key: value for key, value in clean_view.items() if key != P_BATTERY},
     )
     cases.append(
         {
@@ -374,7 +380,7 @@ def build_cases(rulesets):
             "expect": {"findings": {}},
             "expect_findings": [],
             "expect_overall": "compliant",
-            "notes": "全参数达标 → 检出越限数必须为 0（误报对照集；参数集随规则包增长自动补齐）。",
+            "notes": "全参数达标（整车/电池/充电器三维）→ 检出越限数必须为 0（误报对照集；参数集随规则包增长自动补齐）。",
         }
     )
 

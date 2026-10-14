@@ -47,6 +47,10 @@
       "anti_tamper_speed_limiter": {
         "value": true,
         "unit": ""
+      },
+      "charger_no_load_output_voltage": {
+        "value": "42.3",
+        "unit": "V"
       }
     }
   },
@@ -55,5 +59,5 @@
   },
   "expect_findings": [],
   "expect_overall": "compliant",
-  "notes": "全参数达标 → 检出越限数必须为 0（误报对照集；参数集随规则包增长自动补齐）。"
+  "notes": "全参数达标（整车/电池/充电器三维）→ 检出越限数必须为 0（误报对照集；参数集随规则包增长自动补齐）。"
 }

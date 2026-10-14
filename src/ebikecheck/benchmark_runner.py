@@ -17,8 +17,8 @@ import time
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Tuple
 
-from .engine import matrix, rules as rules_mod
-from .engine.values import epsilon_for
+from .engine import rules as rules_mod
+from .engine.findings import NON_COMPLIANT
 from .io_utils import read_json
 from .paths import find_data_dir
 
@@ -27,7 +27,7 @@ EXIT_FAIL = 1
 EXIT_USAGE = 2
 
 #: 已注册套件（``--only`` 白名单；未知名 → exit 2）。
-SUITE_NAMES = ("rules", "boundary", "synthetic", "version")
+SUITE_NAMES = ("rules", "boundary", "rule_driven", "dimensions", "synthetic", "version")
 
 _TRUTH_DIR = os.path.join("truth", "cases")
 
@@ -61,23 +61,10 @@ def _threshold(manifest, key: str) -> Decimal:
 
 
 def _check_profile_dict(profile: Dict[str, Any], data_dir: str, version_key: str):
-    """直接对内存档案判定（基准层不落盘临时文件）。"""
-    manifest = rules_mod.load_manifest(data_dir)
-    ruleset = rules_mod.load_ruleset_by_key(data_dir, manifest, version_key)
-    findings = matrix.check_params(ruleset.effective_rules(), profile.get("params", {}))
-    from .engine.findings import CheckResult
+    """直接对内存档案做**三维**核查（基准层不落盘临时文件；与 CLI 同一装配）。"""
+    from . import service
 
-    return CheckResult(
-        profile_id=profile.get("profile_id", ""),
-        ruleset_file=ruleset.file_name,
-        ruleset_sha256=ruleset.sha256,
-        version_key=version_key,
-        version_anchor={"basis": "bench", "value": version_key, "rule": "bench", "note": ""},
-        findings=findings,
-        excluded_rules=list(ruleset.excluded),
-        profile_sha256="",
-        source_blocks=[],
-    )
+    return service.check_profile_dict(profile, data_dir, version_key)
 
 
 def suite_rules(data_dir: str) -> Tuple[int, int, List[str]]:
@@ -111,97 +98,187 @@ def suite_rules(data_dir: str) -> Tuple[int, int, List[str]]:
     return checks, checks - len(problems), problems
 
 
+def _effective_rules_by_ruleset(data_dir: str):
+    """``[(anchor_version_key, scope, [rule, ...])]``：各分册**生效**规则。
+
+    ``anchor_version_key`` 是喂给服务层的**整车版本锚点**（服务层要求它属于
+    GB17761 标准族）：整车册用该册自身的版本键（2018/2024 各判一次）；电池册与
+    充电器册属独立标准，用默认生效版本锚定 —— 其分册由**作用域**选取，与版本键无关。
+    """
+    from .engine import version as version_mod
+
+    manifest = rules_mod.load_manifest(data_dir)
+    default_vehicle = version_mod.default_version_key(manifest.version_anchors) or ""
+    out = []
+    for entry in manifest.rulesets:
+        ruleset = rules_mod.load_ruleset_by_key(data_dir, manifest, entry["version_key"])
+        scope = entry.get("scope", "")
+        anchor = entry["version_key"] if scope == rules_mod.SCOPE_VEHICLE else default_vehicle
+        out.append((anchor, scope, ruleset.effective_rules()))
+    return out
+
+
+def _states_for(data_dir, version_key, rule, value, unit, applies_if, scope=""):
+    """构造"只改该规则目标参数"的档案，取该参数的结论集合（**完整三维路径**）。
+
+    条件规则要构造出**条件为真**的档案，否则断言打在 ``not_applicable`` 上
+    （如"非铅蓄电池"条件固定给 ``lead_acid`` 必不适用）。构造从 ``applies_if``
+    引用的参数出发逐个候选值试解 —— **不针对具体规则 id 写死**。
+    """
+    from .benchmark.probes import params_for_rule_probe
+
+    params = params_for_rule_probe(rule, value)
+    result = _check_profile_dict({"profile_id": "BENCH", "params": params}, data_dir, version_key)
+    dimension = result.dimension(scope) if scope else None
+    findings = dimension.findings if dimension is not None else result.findings
+    return [item.state for item in findings if item.param == rule.param]
+
+
 def suite_boundary(data_dir: str) -> Tuple[int, int, List[str]]:
-    """限值边界枚举：从**规则包本身**推导端点，断言恰好等于限值判 compliant、
-    超一个最小计量单位判 non_compliant（规则驱动层，不读真值库）。"""
+    """限值边界枚举：从**规则包本身**推导端点（规则驱动层，不读真值库）。
+
+    M2 起覆盖**全部比较运算符**（``<= >= < > == != in not_in range``）与
+    布尔/无量纲条目 —— 端点由 :mod:`benchmark.probes` 从 ``op``/``value``/``unit``
+    推导，新增规则自动进枚举，**不写死规则 id**。
+    """
+    from .benchmark import probes
+
+    problems: List[str] = []
+    checks = 0
+    passed = 0
+    for version_key, scope, rules in _effective_rules_by_ruleset(data_dir):
+        for rule in rules:
+            for value, expected in probes.probe_values(rule):
+                checks += 1
+                states = _states_for(
+                    data_dir, version_key, rule, value, rule.unit, rule.applies_if, scope
+                )
+                if expected in states:
+                    passed += 1
+                else:
+                    problems.append(
+                        "{0}: 构造 {1!r} 应判 {2}，实际 {3}".format(
+                            rule.id, value, expected, ",".join(states) or "无结论"
+                        )
+                    )
+    return checks, passed, problems
+
+
+def suite_rule_driven(data_dir: str) -> Tuple[int, int, List[str]]:
+    """规则驱动层：只从规则表推导端点，经**完整三维核查路径**端到端对账。
+
+    与 ``boundary`` 的区别：``boundary`` 只看"目标参数那一条"的结论；
+    本套件额外断言**统一结论**（最弱优先聚合）与该维度内**其余参数**的行为 ——
+    即"规则表 → 服务层装配 → 引擎判定"整条链路上没有一处靠真值库兜底。
+    """
+    from .benchmark import probes
+    from .benchmark.cases import observed_states
+
     manifest = rules_mod.load_manifest(data_dir)
     problems: List[str] = []
     checks = 0
     passed = 0
-    for entry in manifest.rulesets:
-        ruleset = rules_mod.load_ruleset_by_key(data_dir, manifest, entry["version_key"])
-        for rule in ruleset.effective_rules():
-            unit = rule.unit or ""
-            if unit.lower() in ("", "none", "text", "bool") or rule.op not in ("<=", ">="):
-                continue
-            epsilon = epsilon_for(unit)
-            base = Decimal(str(rule.value))
-            dearer = base + epsilon if rule.op == "<=" else base - epsilon
-
-            # 断言 1：恰好等于限值
-            checks += 1
-            states = _states_for(data_dir, entry["version_key"], rule, base, unit, rule.applies_if)
-            if "compliant" in states:
-                passed += 1
-            else:
-                problems.append(
-                    "{0}: 恰好等于限值应判 compliant，实际 {1}".format(
-                        rule.id, ",".join(states) or "无结论"
-                    )
+    for version_key, scope, rules in _effective_rules_by_ruleset(data_dir):
+        for rule in rules:
+            for value, expected in probes.probe_values(rule):
+                checks += 1
+                params = probes.params_for_rule_probe(rule, value)
+                result = _check_profile_dict(
+                    {"profile_id": "BENCH", "params": params}, data_dir, version_key
                 )
-
-            # 断言 2：越限一个最小计量单位
-            checks += 1
-            states = _states_for(data_dir, entry["version_key"], rule, dearer, unit, rule.applies_if)
-            if "non_compliant" in states:
-                passed += 1
-            else:
-                problems.append(
-                    "{0}: 越限一个最小计量单位应判 non_compliant，实际 {1}".format(
-                        rule.id, ",".join(states) or "无结论"
+                dimension = result.dimension(scope)
+                if dimension is None:
+                    problems.append(
+                        "{0}: 版本 {1} 下缺 {2} 维度（三维装配不完整）".format(
+                            rule.id, version_key, scope
+                        )
                     )
-                )
+                    continue
+                # 同一参数可能有多条互斥条件规则（铅蓄电池/其他电池各有质量限值），
+                # 逐参数结论必须取"最弱" —— 与对账语义同一实现源（D-38 口径）。
+                observed = observed_states(dimension)
+                got = observed.get(rule.param)
+                if got != expected:
+                    problems.append(
+                        "{0}: 参数 {1} 构造 {2!r} 期望 {3}，实际 {4}".format(
+                            rule.id, rule.param, value, expected, got
+                        )
+                    )
+                    continue
+                # 统一结论必须与该维度结论同源（不符合 > 未提供 > 未评估 > 符合）。
+                if expected == NON_COMPLIANT and result.overall() != NON_COMPLIANT:
+                    problems.append(
+                        "{0}: 维度判不符合，统一结论却是 {1}（聚合丢结论）".format(
+                            rule.id, result.overall()
+                        )
+                    )
+                    continue
+                passed += 1
     return checks, passed, problems
 
 
-def _states_for(data_dir, version_key, rule, value, unit, applies_if):
-    """构造只含该参数的档案并取该参数的结论集合。
+def suite_dimensions(data_dir: str) -> Tuple[int, int, List[str]]:
+    """三维判定与跨标准统一结论（M2-1/M2-2）。
 
-    条件规则要构造出**条件为真**的档案，否则边界断言打在 ``not_applicable`` 上
-    （如 ``vehicle_mass-other`` 的条件是"非铅蓄电池"，固定给 ``lead_acid`` 必不适用）。
-    这里从 ``applies_if`` 引用的参数出发，**逐个候选值试解**，取第一个使条件为真的
-    构造 —— 不针对具体规则 id 写死，新增条件规则自动适用。
+    对每个标准分册各构造一份"全参数合规 + 只让该册某条越限"的档案，断言：
+    ① 三个维度都在（整车/电池/充电器各挂自身标准号）；② 越限所在维度判不符合、
+    其余参与聚合的维度不背锅；③ 统一结论 = 不符合。零真值库依赖。
     """
-    params = {rule.param: {"value": str(value), "unit": unit}}
-    if applies_if is not None:
-        params.update(_satisfying_condition_params(applies_if))
-    result = _check_profile_dict({"params": params}, data_dir, version_key)
-    return [f.state for f in result.findings if f.param == rule.param]
+    from .benchmark import probes
 
+    problems: List[str] = []
+    checks = 0
+    passed = 0
+    scopes = set()
+    for version_key, scope, rules in _effective_rules_by_ruleset(data_dir):
+        scopes.add(scope)
+        if not rules:
+            # 该标准首期无可参数化限值（如 GB 43854 全册为型式试验要求）→ 维度
+            # 仍必须装配出来（零生效规则、不参与聚合），只是无越限构造可造。
+            continue
+        # 以该册**第一条**生效规则为目标造越限构造（不写死规则 id）。
+        target = rules[0]
+        bad = [value for value, state in probes.probe_values(target) if state == NON_COMPLIANT]
+        if not bad:
+            continue
+        checks += 1
+        params = probes.params_for_rule_probe(target, bad[0])
+        result = _check_profile_dict(
+            {"profile_id": "BENCH", "params": params}, data_dir, version_key
+        )
+        dimension = result.dimension(scope)
+        ok = True
+        if dimension is None:
+            problems.append("{0}: 版本 {1} 缺 {2} 维度".format(target.id, version_key, scope))
+            ok = False
+        elif dimension.overall() != NON_COMPLIANT:
+            problems.append(
+                "{0}: 目标册 {1} 应判不符合，实际 {2}".format(
+                    target.id, scope, dimension.overall()
+                )
+            )
+            ok = False
+        elif result.overall() != NON_COMPLIANT:
+            problems.append(
+                "{0}: 统一结论应为不符合，实际 {1}".format(target.id, result.overall())
+            )
+            ok = False
+        if ok:
+            passed += 1
 
-#: 条件参数候选值（枚举/布尔通路的构造用；判定语义不依赖它，仅用于"造出条件为真"）。
-_CONDITION_CANDIDATES = ("lead_acid", "lithium_ion", "true", "false")
-
-
-def _satisfying_condition_params(applies_if) -> Dict[str, Any]:
-    """求一组使 ``applies_if`` 为真的参数构造（小候选空间穷举）。"""
-    from .engine.rules import eval_applies_if
-
-    names: List[str] = []
-    _collect_condition_params(applies_if, names)
-    assignment: Dict[str, Any] = {}
-    for name in names:
-        for candidate in _CONDITION_CANDIDATES:
-            trial = dict(assignment)
-            trial[name] = {"value": candidate, "unit": ""}
-            if eval_applies_if(applies_if, trial) is True:
-                assignment = trial
-                break
-    return assignment
-
-
-def _collect_condition_params(expr, out: List[str]) -> None:
-    if not isinstance(expr, dict):
-        return
-    if "param" in expr:
-        if expr["param"] not in out:
-            out.append(expr["param"])
-        return
-    for key in ("all", "any"):
-        for item in expr.get(key, []) or []:
-            _collect_condition_params(item, out)
-    if "not" in expr:
-        _collect_condition_params(expr["not"], out)
+    # 三维齐备：vehicle 必在；battery/charger 分册存在即应各成一维（即使零生效规则）。
+    manifest = rules_mod.load_manifest(data_dir)
+    declared_scopes = {entry.get("scope", "") for entry in manifest.rulesets}
+    checks += 1
+    if scopes == declared_scopes:
+        passed += 1
+    else:
+        problems.append(
+            "三维装配未覆盖全部分册作用域: 实测 {0} / 声明 {1}".format(
+                sorted(scopes), sorted(declared_scopes)
+            )
+        )
+    return checks, passed, problems
 
 
 def suite_synthetic(data_dir: str) -> Tuple[int, int, List[str]]:
@@ -256,6 +333,8 @@ def suite_version(data_dir: str) -> Tuple[int, int, List[str]]:
 SUITES = {
     "rules": (suite_rules, "truth_match_min"),
     "boundary": (suite_boundary, "truth_match_min"),
+    "rule_driven": (suite_rule_driven, "truth_match_min"),
+    "dimensions": (suite_dimensions, "truth_match_min"),
     "synthetic": (suite_synthetic, "truth_match_min"),
     "version": (suite_version, "truth_match_min"),
 }
@@ -369,6 +448,35 @@ def probe_falsifiable(data_dir: str, suite: str) -> bool:
             return bool(problems) or passed < total
         finally:
             values_mod.UNIT_EPSILON = original
+    if suite == "rule_driven":
+        # 注入：把"最小计量单位"归零 → 越限构造退化为等于限值 → 应报差异。
+        import ebikecheck.engine.values as values_mod
+
+        original = values_mod.UNIT_EPSILON
+        broken = {key: "0" for key in original}
+        values_mod.UNIT_EPSILON = broken
+        try:
+            total, passed, problems = func(data_dir)
+            return bool(problems) or passed < total
+        finally:
+            values_mod.UNIT_EPSILON = original
+    if suite == "dimensions":
+        # 注入：让统一结论聚合忽略非整车维度 → 电池/充电器越限不再进统一结论 → 应报差异。
+        # ProfileCheckResult.overall() 在**调用时**从 findings 模块全局取 aggregate_overall，
+        # 故重绑模块属性即可生效。
+        from .engine import findings as findings_mod
+
+        original = findings_mod.aggregate_overall
+
+        def _broken(results):
+            return original([item for item in results if item.scope == "vehicle"])
+
+        findings_mod.aggregate_overall = _broken
+        try:
+            total, passed, problems = func(data_dir)
+            return bool(problems) or passed < total
+        finally:
+            findings_mod.aggregate_overall = original
     if suite == "rules":
         # 注入：临时把一个 pending 条目改成 verified（value 仍为 null）→ 应被抓。
         manifest = rules_mod.load_manifest(data_dir)

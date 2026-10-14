@@ -46,6 +46,13 @@ _STATE_LABELS = {
     "not_assessed": "未评估",
 }
 
+#: 维度中文名（展示层）。
+_SCOPE_LABELS = {
+    "vehicle": "整车",
+    "battery": "电池",
+    "charger": "充电器",
+}
+
 
 def _emit(payload, as_json: bool, human_lines: List[str]) -> None:
     if as_json:
@@ -106,8 +113,11 @@ def cmd_check(args) -> int:
             result.version_anchor.get("basis"),
             result.version_anchor.get("value"),
         ),
-        "规则包: {0} (sha256 {1})".format(
-            result.ruleset_file, result.ruleset_sha256[:16] + "…"
+        "维度: {0}".format(
+            " / ".join(
+                "{0}({1})".format(_SCOPE_LABELS.get(item.scope, item.scope), item.standard)
+                for item in result.dimensions
+            )
         ),
     ]
     counts = result.counts()
@@ -119,18 +129,36 @@ def cmd_check(args) -> int:
             counts["not_provided"],
         )
     )
-    lines.append("整体结论: {0}".format(_STATE_LABELS.get(result.overall(), result.overall())))
-    lines.append("逐项结论:")
-    for index, finding in enumerate(result.findings, start=1):
-        lines.append(_finding_line(index, finding))
-    if result.excluded_rules:
+    lines.append(
+        "统一结论: {0}".format(_STATE_LABELS.get(result.overall(), result.overall()))
+    )
+    for dimension in result.dimensions:
+        label = _SCOPE_LABELS.get(dimension.scope, dimension.scope)
+        applicable = dimension.applicability.get("applicable", True)
+        suffix = "" if applicable else "（本车型不适用：{0}）".format(
+            dimension.applicability.get("reason", "")
+        )
         lines.append(
-            "本次核查未启用 {0} 条规则（待核对，不参与任何判定）:".format(
-                len(result.excluded_rules)
+            "—— {0}维度 [{1}] 结论 {2}（生效规则 {3} 条）{4}".format(
+                label,
+                dimension.standard,
+                _STATE_LABELS.get(dimension.overall(), dimension.overall()),
+                dimension.effective_rule_count,
+                suffix,
             )
         )
-        for item in result.excluded_rules:
-            lines.append("  - {0} ({1})".format(item.rule_id, item.reason))
+        if not applicable:
+            continue
+        for index, finding in enumerate(dimension.findings, start=1):
+            lines.append(_finding_line(index, finding))
+        if dimension.excluded_rules:
+            lines.append(
+                "   本次核查未启用 {0} 条规则（待核对，不参与任何判定）:".format(
+                    len(dimension.excluded_rules)
+                )
+            )
+            for item in dimension.excluded_rules:
+                lines.append("     - {0} ({1})".format(item.rule_id, item.reason))
     _emit(payload, args.json, lines)
     return EXIT_FINDINGS if result.overall() == NON_COMPLIANT else EXIT_OK
 

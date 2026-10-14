@@ -30,16 +30,18 @@ def test_selfcheck_exit_zero_and_reports_gating(capsys):
 
 
 def test_check_clean_profile_exit_zero(capsys, written_profile, tmp_path):
-    """全参数合规档案 → 整体"符合"、退出码 0（参数集由规则包推导，不写死数值）。"""
-    from conftest import compliant_params
+    """全参数合规档案 → 统一结论"符合"、退出码 0（参数集由**全部**规则包推导）。"""
+    from conftest import compliant_params, load_all_rule_values
 
-    params = compliant_params(VALUES)
+    params = compliant_params(load_all_rule_values(DATA))
     params["battery_type"] = param("lead_acid", "")
     path = written_profile(params)
     code = _run(["check", path, "--data-dir", DATA])
     assert code == cli.EXIT_OK
     out = capsys.readouterr().out
-    assert "整体结论: 符合" in out
+    assert "统一结论: 符合" in out
+    # 三维都必须出现在输出里（M2-1）。
+    assert "整车维度" in out and "电池维度" in out and "充电器维度" in out
 
 
 def test_check_non_compliant_exit_one(capsys, written_profile):
@@ -55,7 +57,7 @@ def test_check_non_compliant_exit_one(capsys, written_profile):
     code = _run(["check", path, "--data-dir", DATA])
     assert code == cli.EXIT_FINDINGS
     out = capsys.readouterr().out
-    assert "整体结论: 不符合" in out
+    assert "统一结论: 不符合" in out
 
 
 def test_not_provided_does_not_change_exit_code(capsys, written_profile):

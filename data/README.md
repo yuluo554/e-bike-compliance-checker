@@ -8,9 +8,9 @@
 | 数据 | 类型 | 来源 | 许可/版权口径 | 状态 |
 |---|---|---|---|---|
 | data/rules/（限值规则包：三标准分册 + 双版本 + manifest.json） | 规则包（生成器冻结产物） | `tools/gen_rulesets.py` 生成（来源登记 `tools/sources/rules_source.json`）；限值**逐条挂标准号、条款号与数值出处** | 自制（标准号 + 条款号 + 要点引用，规避全文转载） | ✅ M1 更新：4 册 + manifest；**verified=13 / pending=4**（条款号 11 条已核、6 条如实标待核对，见 §二） |
-| data/mapping/（车型列名 → 标准参数名 映射表 + 单位别名表） | 字段映射表 | `tools/gen_mapping.py` 生成（来源登记 `tools/sources/mapping_source.json`） | 自制（列名变体与单位别名，不含限值） | ✅ M1 建成：`mapping.json`，覆盖规则包**全部 14 个标准参数** + 10 类单位别名 |
+| data/mapping/（车型列名 → 标准参数名 映射表 + 单位别名表） | 字段映射表 | `tools/gen_mapping.py` 生成（来源登记 `tools/sources/mapping_source.json`） | 自制（列名变体与单位别名，不含限值） | ✅ M1 建成 / **M2 打通**：`mapping.json` 覆盖规则包**全部 14 个标准参数** + **11 类单位别名**（M2 补 `‰`）；`unit_aliases` 已由 `engine/values.py::unit_alias_index` 消费 —— 档案写「公里/小时」「公斤」等变体归一后仍可判定 |
 | data/knowledge/（依据索引 + 官方快照 + sha256 台账） | 依据索引 + 快照 | `tools/gen_knowledge.py` 生成（来源登记 `tools/sources/knowledge_source.json`）；快照为官方页面直连落盘 | 官方标准元数据/公文（著作权法第五条：法规官方文件不适用版权保护） | ✅ M1 建成：`clauses.json`（逐条挂发布机关/标准号/条款号/条款状态/URL/抓取日期）+ `raw/` 6 份官方快照（逐份 sha256） |
-| data/truth/（合成车型档案 + 真值库） | 合成数据 + 算例 | `tools/gen_synthetic.py` 生成（自研 splitmix64，固定 seed 20261014） | 自制（虚构车型，非真实数据） | ✅ M1 更新：13 例 + index.json（边界/缺参数/单位换算/干净/版本差异） |
+| data/truth/（合成车型档案 + 真值库） | 合成数据 + 算例 | `tools/gen_synthetic.py` 生成（自研 splitmix64，固定 seed 20261014） | 自制（虚构车型，非真实数据） | ✅ M1 建成 / **M2 更新**：13 例 + index.json（边界/缺参数/单位换算/干净/版本差异）；"干净档案"用例参数集改为**跨三维全册**实时推导 |
 
 > **生成器为唯一写入者**：产物禁手改；改体例走 `tools/gen_*.py` 整目录重生成，配"再生成逐字节一致"守门测试（`tests/test_gates.py`）。
 >
@@ -19,8 +19,12 @@
 > - 真值库（13 份）：`SYN-CASE-001..013.json` + `index.json`
 > - 字段映射（1 份）：`data/mapping/mapping.json`
 > - 依据索引（1 份）：`data/knowledge/clauses.json` + `data/knowledge/raw/` 6 份官方快照
+>
+> **M2 变更**（数据侧）：仅 `mapping.json` 重生成（补 `‰` 别名 → sha256 变化，见下表）；
+> 规则包与依据索引**未改**（M2 不新增限值，只做三维判定与基准扩展）；真值库重生成
+> （`SYN-CASE-011` 补充电器参数 → 仍 13 例，`index.json` sha256 不变）。
 
-### 一·一 M1 产物 sha256 台账（基准日 2026-10-14 实测）
+### 一·一 M1 产物 sha256 台账（基准日 2026-10-14 实测；M2 收尾复核）
 
 | 产物 | sha256 |
 |---|---|
@@ -29,7 +33,7 @@
 | `data/rules/gb43854-2024.json` | `6fd4dabc2056ca5c4b218e43823cf9ede3db003fdbe12b2489eaf4e1e8c78dcd` |
 | `data/rules/gb42296-2022.json` | `4c64e4f611a70eb324f5b4abcd4b0297e1925feb74b807bcf8a17a8c58f5f1c6` |
 | `data/rules/manifest.json` | `fefbdee7c700841703a9aec57dc7e58e24a320fe8b9740f1687f641872fdfe1f` |
-| `data/mapping/mapping.json` | `a43a65162185717a96225c51aedb730ad649a4cace67761fb3e044fa78e94ecd` |
+| `data/mapping/mapping.json` | `4c74eeb5227382701753f0be08cd53fb86dd391356ffd557f1a479044bf61c40` |
 | `data/knowledge/clauses.json` | `fbf9a001e2f3b7c86156349711a4b35788a474fe82ea30894a12360bd6dd8569` |
 | `data/truth/cases/index.json` | `b0dea614a74568520b056f0e0c94b983e30ec7de32b9848915456372ac3a8374` |
 

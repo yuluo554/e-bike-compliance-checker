@@ -64,9 +64,9 @@ python -m pip install -e ".[dev]"
 
 ```bash
 ebikecheck selfcheck                 # 数据目录定位 + 规则库加载 + status 门控计数
-ebikecheck check <车型.json>         # 单车型参数核查（人类可读；--json / --version-of）
+ebikecheck check <车型.json>         # 单车型三维核查：整车 + 电池 + 充电器 + 统一结论（--json / --version-of）
 ebikecheck rules                     # 规则库概览与逐册门控计数
-ebikecheck bench                     # 内置评测基准（四套件，门槛自 manifest 下发）
+ebikecheck bench                     # 内置评测基准（六套件，门槛自 manifest 下发）
 ebikecheck version
 python -m pytest -q                  # 测试套件
 python tools/gen_rulesets.py --check # 规则包冻结守门（再生成逐字节一致）
@@ -95,13 +95,29 @@ python tools/audit_desensitize.py    # 脱敏审计（三模式 + selftest）
 |---|---|---|
 | M0 | 计划 00–06 定稿 + 可运行骨架（规则加载/门控/限值骨架/CLI/基准/门禁/测试/CI） | ✅ 2026-10-14 完成（87 测试 3.8/3.12 双绿；CI 未接远端，待首推验证） |
 | M1 | 数据先行：限值规则逐条挂原文核对（补条款号）+ 字段映射 + 依据索引 | ✅ 2026-10-14 完成（94 测试 3.8/3.12 双绿；条款号 11 条 verified；见 [05 §四 M1 DoD](plan/05-数据计划与里程碑.md)） |
-| M2 | 限值矩阵引擎完整：三维限值判定 + 边界枚举 + 规则驱动基准 | ⬜ 下一棒（见 [plan/HANDOFF-M2.md](plan/HANDOFF-M2.md)） |
-| M3 | 字段映射与对账：列名映射 + 批量扫描 + 跨轮对账 + 报告/证据链 | ⬜ |
+| M2 | 限值矩阵引擎完整：三维（整车/电池/充电器）判定 + 跨标准统一结论 + 边界枚举与规则驱动基准 | ✅ 2026-10-14 完成（133 测试 3.8/3.12 双绿；bench 六套件全绿 17/17·26/26·26/26·4/4·12/12·1/1；见 [05 §四 M2](plan/05-数据计划与里程碑.md)） |
+| M3 | 字段映射与对账：列名映射 + 批量扫描 + 跨轮对账 + 报告/证据链 | ⬜ 下一棒（见 [plan/HANDOFF-M3.md](plan/HANDOFF-M3.md)） |
 | M4 | 基准完整：六套件 + 探活，指标进 README；版本差异对照报告 | ⬜ |
 | M5 | 桌面交付：PySide6 界面 + PyInstaller 打包 + 报告导出 + 技术报告 | ⬜ |
 | M6 | 脱敏发布 GitHub + Release（exe）+ 收尾固化 | ⬜ |
 
 > **M0 诚实说明**：CI workflow 已就位并通过本地等价校验（YAML 可解析、矩阵覆盖断言、`fetch-depth: 0` 断言），但**本地无远端、未推送 = 未跑过 CI**，故不能记"CI 绿"；真实 CI 结论待首推后回填。
+
+## 内置评测基准（零 API 依赖、离线可跑）
+
+门槛**只从 manifest 读**（数据非代码）；每套件配**可证伪探活**（注入缺陷后必须报未达标）。
+
+| 套件 | 层 | 测什么 | 实测（2026-10-14） |
+|---|---|---|---|
+| `rules` | 规则包自洽 | `status` 门控计数正确、`pending` 零进入核查路径 | 17/17 |
+| `boundary` | **规则驱动** | 由规则表推导全部限值端点（覆盖 `<= >= < > == != in not_in range` 与布尔/无量纲条目） | 26/26 |
+| `rule_driven` | **规则驱动** | 同一套推导端点走完整三维核查路径端到端对账（不读真值库） | 26/26 |
+| `dimensions` | **规则驱动** | 三维齐备 + 越限所在维度判不符合 + 统一结论不丢维度结论 | 4/4 |
+| `synthetic` | 样本驱动 | 合成真值库逐例对账（含边界/缺参数/单位换算/干净/版本差异） | 12/12 |
+| `version` | 样本驱动 | 双版本对照：同档案两版期望结论不同 | 1/1 |
+
+总耗时 0.063s（上限 1.0s，随 manifest 下发）。`boundary` / `rule_driven` / `dimensions`
+**不读真值库**，只从规则表推导 —— 新增规则自动进枚举，无需改基准代码。
 
 ## 限制与免责
 
