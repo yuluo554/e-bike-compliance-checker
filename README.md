@@ -6,7 +6,7 @@
 
 **全本地处理、零上传**：车型参数与供应链信息可能含商业敏感信息，工具默认不联网、不做任何数据外发。
 
-> 状态：🚧 **M1 数据先行已完成（2026-10-14）**——M0 可运行骨架（规则加载器 + `status` 门控 + 限值矩阵引擎四态 + 版本锚定 + CLI + 内置基准 + 门禁 + CI）之上，M1 经 **openstd 国家标准全文公开系统**取得三份现行标准全文并**逐条核到条款号**：**规则库现为 13 条 `verified` / 4 条 `pending`**（条款号 11 条已核、6 条如实标待核对）；新增**字段映射表**（`data/mapping/`）与**依据索引 + 官方快照**（`data/knowledge/`）。
+> 状态：🚧 **M3 字段映射与对账已完成（2026-10-14）**——M2 三维限值矩阵引擎（整车/电池/充电器各挂自身条款、跨标准统一结论、规则驱动边界枚举）之上，M3 新增：**字段映射引擎**（厂家列名 → 标准参数名；歧义列名如实标 `未提供(mapping_uncertain)`，绝不猜）、**批量扫描 `scan`**（单件坏格式隔离原因码、不改退出码语义）、**跨轮对账 `compare`**（新增越限/已整改/持续越限三集合，配对主键 = 车型身份键）、**证据链**（档案 + 报告双 sha256 指纹 + 溯源完整性硬断言）。内置评测基准 **八套件全绿**，162 项测试 3.8/3.12 双绿。
 
 ---
 
@@ -60,13 +60,15 @@ python -m pip install -U pip
 python -m pip install -e ".[dev]"
 ```
 
-**已可用**（M0 骨架 + M1 数据）：
+**已可用**（M0 骨架 + M1 数据 + M2 三维引擎 + M3 映射与对账）：
 
 ```bash
 ebikecheck selfcheck                 # 数据目录定位 + 规则库加载 + status 门控计数
 ebikecheck check <车型.json>         # 单车型三维核查：整车 + 电池 + 充电器 + 统一结论（--json / --version-of）
+ebikecheck scan <目录>               # 批量扫描：失败件单列原因码（不改退出码语义），与越限件分列
+ebikecheck compare <上轮目录> <本轮目录>  # 跨轮对账三集合：新增越限 / 已整改 / 持续越限
 ebikecheck rules                     # 规则库概览与逐册门控计数
-ebikecheck bench                     # 内置评测基准（六套件，门槛自 manifest 下发）
+ebikecheck bench                     # 内置评测基准（八套件，门槛自 manifest 下发）
 ebikecheck version
 python -m pytest -q                  # 测试套件
 python tools/gen_rulesets.py --check # 规则包冻结守门（再生成逐字节一致）
@@ -77,7 +79,7 @@ python tools/check_zero_literals.py  # 零字面量门禁
 python tools/audit_desensitize.py    # 脱敏审计（三模式 + selftest）
 ```
 
-**规划中**（M1–M6）：`scan`（批量扫描 + 跨轮对账）、`report`（Markdown/XLSX 导出）、`gui`（桌面）。
+**规划中**（M4–M6）：版本差异对照报告、`report`（Markdown/XLSX 导出）、`gui`（桌面）。
 
 ### CLI 退出码
 

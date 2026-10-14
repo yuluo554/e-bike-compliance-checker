@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
@@ -60,6 +61,10 @@ def profile_from_dict(raw: Any, path: str = "", sha256: str = "") -> Profile:
 
     与 :func:`load_profile` 走**同一套结构校验** —— 否则基准层会放行
     落盘通路会拒的档案，"基准全绿"就证明不了输入契约。
+
+    ``params`` 条目允许为对象或**标量**：标量即列名映射通路
+    （:mod:`engine.mapping`）的输入形状，此处不做形状改写 —— 判定层把
+    非对象条目按"缺 value"处理，映射通路在喂入前先归一。
     """
     if not isinstance(raw, dict):
         raise ProfileError("档案顶层必须是对象: {0}".format(path or "<内存>"))
@@ -72,10 +77,26 @@ def profile_from_dict(raw: Any, path: str = "", sha256: str = "") -> Profile:
     if not isinstance(params, dict):
         raise ProfileError("档案 params 必须是对象: {0}".format(path or "<内存>"))
     for name, item in params.items():
-        if not isinstance(item, dict):
+        if isinstance(item, dict):
+            if "value" not in item:
+                raise ProfileError("参数 {0} 缺少 value 字段: {1}".format(name, path or "<内存>"))
+        elif item is None or isinstance(item, (str, int, float, bool)):
+            continue  # 标量列（列名映射通路的输入形状；value 取原样）
+        else:
             raise ProfileError(
-                "参数 {0} 必须是对象（含 value/unit）: {1}".format(name, path or "<内存>")
+                "参数 {0} 必须是对象（含 value/unit）或标量: {1}".format(name, path or "<内存>")
             )
-        if "value" not in item:
-            raise ProfileError("参数 {0} 缺少 value 字段: {1}".format(name, path or "<内存>"))
     return Profile(path=path, sha256=sha256, profile_id=profile_id, raw=raw)
+
+
+def profile_sha256_of_content(raw: Dict[str, Any]) -> str:
+    """档案**内容**指纹（FR-11）：与文件路径无关，同内容 → 同指纹。
+
+    规范化序列化（``sort_keys`` + 固定分隔符）后取 sha256，使"同一份档案
+    在不同文件名/空白格式下"指纹一致；文件级指纹（``Profile.sha256``）保留
+    原始字节口径，两者用途分开登记。
+    """
+    from .io_utils import sha256_bytes
+
+    canonical = json.dumps(raw, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return sha256_bytes(canonical.encode("utf-8"))

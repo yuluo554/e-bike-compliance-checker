@@ -21,6 +21,7 @@ from .findings import (
     NOT_APPLICABLE,
     NOT_PROVIDED,
     REASON_CONDITION_UNKNOWN,
+    REASON_MAPPING_UNCERTAIN,
     REASON_MISSING,
     REASON_NULL_VALUE,
     REASON_UNIT_INCOMPATIBLE,
@@ -70,6 +71,10 @@ def check_param(rule: Rule, params: Dict[str, Any]) -> Finding:
     provided = params.get(rule.param)
     if not isinstance(provided, dict):
         return Finding(observed=None, state=NOT_PROVIDED, reason=REASON_MISSING, **base)
+    if provided.get("reason") == REASON_MAPPING_UNCERTAIN:
+        # 字段映射层的"歧义列名"标记（engine.mapping.normalize_params 注入）：
+        # 列名能对上参数但语义有歧义（如「车速」）→ 显式未提供，绝不猜值。
+        return Finding(observed=None, state=NOT_PROVIDED, reason=REASON_MAPPING_UNCERTAIN, **base)
     raw_value = provided.get("value")
     if raw_value is None:
         return Finding(observed=None, state=NOT_PROVIDED, reason=REASON_NULL_VALUE, **base)

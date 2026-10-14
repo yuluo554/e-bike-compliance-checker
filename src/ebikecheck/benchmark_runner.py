@@ -27,7 +27,16 @@ EXIT_FAIL = 1
 EXIT_USAGE = 2
 
 #: 已注册套件（``--only`` 白名单；未知名 → exit 2）。
-SUITE_NAMES = ("rules", "boundary", "rule_driven", "dimensions", "synthetic", "version")
+SUITE_NAMES = (
+    "rules",
+    "boundary",
+    "rule_driven",
+    "dimensions",
+    "synthetic",
+    "version",
+    "mapping",
+    "reconcile",
+)
 
 _TRUTH_DIR = os.path.join("truth", "cases")
 
@@ -330,6 +339,126 @@ def suite_version(data_dir: str) -> Tuple[int, int, List[str]]:
     return checks, passed, problems
 
 
+def suite_mapping(data_dir: str) -> Tuple[int, int, List[str]]:
+    """字段映射准确率（FR-08，M3）。
+
+    用**规则包本身**当考题源：对每个映射表条目的每个已登记变体，断言
+    ``resolve`` 精确命中其所属参数；对歧义列名断言判 ``uncertain``；
+    对未登记列名断言判 ``unmapped``。新增参数/变体自动进枚举（不写死 id）。
+    """
+    from .engine import mapping as mapping_mod
+
+    table = mapping_mod.load_param_mapping(data_dir)
+    problems: List[str] = []
+    checks = 0
+    passed = 0
+    raw = read_json(os.path.join(data_dir, "mapping", "mapping.json"))
+    for item in raw.get("parameters") or []:
+        param = item["param"]
+        for variant in item.get("variants") or []:
+            checks += 1
+            verdict, owner = table.resolve(variant)
+            if verdict == mapping_mod.MAPPED and owner == param:
+                passed += 1
+            else:
+                problems.append(
+                    "变体 {0!r} 应映射到 {1}，实际 {2}({3})".format(variant, param, owner, verdict)
+                )
+        for variant in item.get("ambiguous_variants") or []:
+            checks += 1
+            verdict, owner = table.resolve(variant)
+            if verdict == mapping_mod.UNCERTAIN:
+                passed += 1
+            else:
+                problems.append(
+                    "歧义列名 {0!r} 应判 uncertain，实际 {1}({2})".format(variant, owner, verdict)
+                )
+    # 未登记列名必须判 unmapped（含大小写/空白变体，不臆测）。
+    for bogus in ("不存在的列名", "MAX_SPEED", " 车重 ", ""):
+        checks += 1
+        verdict, _owner = table.resolve(bogus)
+        if verdict == mapping_mod.UNMAPPED:
+            passed += 1
+        else:
+            problems.append("未登记列名 {0!r} 应判 unmapped，实际 {1}".format(bogus, verdict))
+    return checks, passed, problems
+
+
+def suite_reconcile(data_dir: str) -> Tuple[int, int, List[str]]:
+    """跨轮对账一致率（FR-10，M3）：三集合语义在**真值库**上端到端验证。
+
+    用两份真值档案构造"上轮两件、本轮同两件（其一整改、其一恶化）"的两轮，
+    断言三集合逐项一致；再验证"本轮新增档案的非通过项计入新增越限"。
+    口径单一实现源：:func:`benchmark.cases.observed_nonpass`。
+    """
+    from .engine.reconcile import PERSISTENT, RESOLVED, NEW_VIOLATION, reconcile_rounds
+    from .benchmark.cases import observed_nonpass
+
+    cases = _load_cases(data_dir)
+    if len(cases) < 3:
+        return 0, 0, ["真值库不足三例，无法构造对账场景"]
+    first = _check_profile_dict(cases[0]["profile"], data_dir, _case_version(cases[0], "GB17761-2024"))
+    second = _check_profile_dict(cases[1]["profile"], data_dir, _case_version(cases[1], "GB17761-2024"))
+    third = _check_profile_dict(cases[2]["profile"], data_dir, _case_version(cases[2], "GB17761-2024"))
+
+    problems: List[str] = []
+    checks = 0
+    passed = 0
+
+    # 场景一：同轮自比 → 零新增、零整改、持续 = 全部非通过项。
+    checks += 1
+    rec = reconcile_rounds([first], [first])
+    first_nonpass = set(observed_nonpass(first))
+    if rec.counts()[PERSISTENT] == len(first_nonpass) and not rec.counts()[NEW_VIOLATION] and not rec.counts()[RESOLVED]:
+        passed += 1
+    else:
+        problems.append("同轮自比应零新增零整改、持续={0}，实际 {1}".format(len(first_nonpass), rec.counts()))
+
+    # 场景二：整改 + 新增 + 持续三集合同时出现 ——
+    # 本轮把第二件**同 profile_id 整改**（越限参数改为合规取值：取自第三例的
+    # 越限参数集，逐项换成第三例的合规值），并追加第三例（新档案 → 新增越限）。
+    repaired = json.loads(json.dumps(cases[1]["profile"], ensure_ascii=False))
+    repaired_params = repaired.setdefault("params", {})
+    for param, _state in observed_nonpass(second):
+        donor = cases[2]["profile"].get("params", {}).get(param)
+        if donor is not None:
+            repaired_params[param] = json.loads(json.dumps(donor, ensure_ascii=False))
+    repaired_result = _check_profile_dict(repaired, data_dir, _case_version(cases[1], "GB17761-2024"))
+    checks += 1
+    rec = reconcile_rounds([first, second], [first, repaired_result, third])
+    counts = rec.counts()
+    second_nonpass = observed_nonpass(second)
+    repaired_nonpass = observed_nonpass(repaired_result)
+    third_nonpass = observed_nonpass(third)
+    repaired_params = {param for param, _state in repaired_nonpass}
+    resolved_expect = {
+        (param, state) for param, state in second_nonpass if param not in repaired_params
+    }
+    got_resolved = {(item[1], item[2]) for item in rec.resolved if item[0] == second.profile_id}
+    got_new = {(item[1], item[2]) for item in rec.new_violations if item[0] == third.profile_id}
+    if (
+        got_resolved >= resolved_expect
+        and got_new >= set(third_nonpass)
+        and counts[PERSISTENT] >= len(first_nonpass)
+    ):
+        passed += 1
+    else:
+        problems.append(
+            "三集合对账不符: 期望整改>={0} 新增>={1} 持续>={2}，实际 {3}".format(
+                len(resolved_expect), len(third_nonpass), len(first_nonpass), counts
+            )
+        )
+
+    # 场景三：档案本轮缺失（未扫描）不等于已整改——对账只在两轮都出现的档案间配对。
+    checks += 1
+    rec = reconcile_rounds([first], [])
+    if rec.counts() == {NEW_VIOLATION: 0, RESOLVED: 0, PERSISTENT: 0}:
+        passed += 1
+    else:
+        problems.append("本轮缺失件不得计入已整改，实际 {0}".format(rec.counts()))
+    return checks, passed, problems
+
+
 SUITES = {
     "rules": (suite_rules, "truth_match_min"),
     "boundary": (suite_boundary, "truth_match_min"),
@@ -337,6 +466,8 @@ SUITES = {
     "dimensions": (suite_dimensions, "truth_match_min"),
     "synthetic": (suite_synthetic, "truth_match_min"),
     "version": (suite_version, "truth_match_min"),
+    "mapping": (suite_mapping, "mapping_accuracy_min"),
+    "reconcile": (suite_reconcile, "reconcile_consistency_min"),
 }
 
 
@@ -537,6 +668,57 @@ def probe_falsifiable(data_dir: str, suite: str) -> bool:
                         ok = False
             return not ok
         return False
+    if suite == "mapping":
+        # 注入：把映射表偷换成"任何列名都精确指到同一参数" → 变体/歧义断言应报差异。
+        from .engine import mapping as mapping_mod
+
+        class _BrokenTable:
+            param_count = 14
+            units: dict = {}
+            ambiguous: dict = {}
+
+            def resolve(self, _column):
+                return "mapped", "max_design_speed"
+
+            def target_unit(self, _param):
+                return None
+
+        saved = dict(mapping_mod._MAPPING_CACHE)
+        original_load = mapping_mod.load_param_mapping
+
+        def _broken_load(_data_dir=None):
+            return _BrokenTable()
+
+        mapping_mod._MAPPING_CACHE["path"] = "probe-broken"
+        mapping_mod._MAPPING_CACHE["table"] = _BrokenTable()
+        mapping_mod.load_param_mapping = _broken_load
+        try:
+            total, passed, problems = func(data_dir)
+            return bool(problems) or passed < total
+        finally:
+            mapping_mod.load_param_mapping = original_load
+            mapping_mod._MAPPING_CACHE["path"] = saved.get("path")
+            mapping_mod._MAPPING_CACHE["table"] = saved.get("table")
+    if suite == "reconcile":
+        # 注入：让对账把"本轮缺失件"也计入已整改 → 探针断言应报差异。
+        from .engine import reconcile as reconcile_mod
+        from .benchmark.cases import observed_nonpass as _nonpass
+
+        original = reconcile_mod.reconcile_rounds
+
+        def _broken(baseline, current):
+            rec = original(baseline, current)
+            for result in baseline:
+                for param, state in _nonpass(result):
+                    rec.resolved.append((result.profile_id, param, state))
+            return rec
+
+        reconcile_mod.reconcile_rounds = _broken
+        try:
+            total, passed, problems = func(data_dir)
+            return bool(problems) or passed < total
+        finally:
+            reconcile_mod.reconcile_rounds = original
     return False
 
 

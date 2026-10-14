@@ -31,11 +31,20 @@ def test_profile_requires_id_and_params(tmp_path):
 
 
 def test_profile_rejects_non_object_param(tmp_path):
+    """M3 起：params 条目允许**标量**（列名映射通路的输入形状），仍拒绝其他类型。"""
     path = os.path.join(str(tmp_path), "bad2.json")
     with open(path, "w", encoding="utf-8", newline="\n") as handle:
-        handle.write(json.dumps({"profile_id": "P", "params": {"x": 1}}))
+        handle.write(json.dumps({"profile_id": "P", "params": {"x": [1, 2]}}))
     with pytest.raises(profile_mod.ProfileError):
         profile_mod.load_profile(path)
+
+
+def test_profile_accepts_scalar_param_for_mapping_channel(tmp_path):
+    path = os.path.join(str(tmp_path), "ok.json")
+    with open(path, "w", encoding="utf-8", newline="\n") as handle:
+        handle.write(json.dumps({"profile_id": "P", "params": {"最高车速": "24.5"}}))
+    loaded = profile_mod.load_profile(path)
+    assert loaded.params["最高车速"] == "24.5"
 
 
 def test_profile_rejects_param_without_value_key(tmp_path):

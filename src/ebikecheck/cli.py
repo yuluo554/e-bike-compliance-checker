@@ -28,8 +28,10 @@ from .service import (
     DataDirError,
     ServiceError,
     check_profile,
+    compare_rounds,
     resolve_data_dir,
     ruleset_overview,
+    scan_dir,
     selfcheck as service_selfcheck,
 )
 
@@ -176,6 +178,73 @@ def cmd_rules(args) -> int:
     return EXIT_OK
 
 
+def cmd_scan(args) -> int:
+    """批量扫描（FR-09）：失败件单列原因码，**不改变退出码语义**。"""
+    try:
+        payload = scan_dir(args.directory, args.data_dir, args.version_of)
+    except ServiceError as error:
+        print("错误: {0}".format(error), file=sys.stderr)
+        return EXIT_USAGE
+    counts = payload["overall_counts"]
+    lines = [
+        "批量扫描: {0}（模式 {1}）".format(payload["directory"], payload["pattern"]),
+        "共 {0} 件：核查 {1} / 失败隔离 {2}".format(
+            payload["total"], len(payload["scanned"]), len(payload["failed"])
+        ),
+        "结论分布: 符合 {0} / 不符合 {1} / 其他（未判定类）{2}".format(
+            counts["compliant"], counts["non_compliant"], counts["other"]
+        ),
+    ]
+    for item in payload["failed"]:
+        lines.append("  [失败] {0} ({1}) {2}".format(item["path"], item["reason"], item["detail"]))
+    for item in payload["nonpass"]:
+        if item["overall"] == "non_compliant":
+            lines.append(
+                "  [越限] {0}  非通过参数: {1}".format(
+                    item["profile_id"], ", ".join(item["nonpass_params"]) or "—"
+                )
+            )
+    for item in payload["nonpass"]:
+        if item["overall"] != "non_compliant":
+            lines.append(
+                "  [{0}] {1}  非通过参数: {2}".format(
+                    item["overall"], item["profile_id"], ", ".join(item["nonpass_params"]) or "—"
+                )
+            )
+    _emit(payload, args.json, lines)
+    # 退出码只看"判出不符合"（O-5）：失败件与未提供都不改语义。
+    has_violation = counts["non_compliant"] > 0
+    return EXIT_FINDINGS if has_violation else EXIT_OK
+
+
+def cmd_compare(args) -> int:
+    """跨轮对账（FR-10）：三集合 新增越限 / 已整改 / 持续越限。"""
+    try:
+        payload = compare_rounds(args.baseline, args.current, args.data_dir, args.version_of)
+    except ServiceError as error:
+        print("错误: {0}".format(error), file=sys.stderr)
+        return EXIT_USAGE
+    rec = payload["reconciliation"]
+    counts = rec["counts"]
+    lines = [
+        "跨轮对账（配对主键: {0}）".format(rec["key_basis"]),
+        "新增越限 {0} / 已整改 {1} / 持续越限 {2}".format(
+            counts["new_violation"], counts["resolved"], counts["persistent"]
+        ),
+    ]
+    for key, label in (
+        ("new_violations", "新增越限"),
+        ("resolved", "已整改"),
+        ("persistent", "持续越限"),
+    ):
+        for entry in rec[key]:
+            lines.append("  [{0}] {1} / {2} / {3}".format(label, entry[0], entry[1], entry[2]))
+    _emit(payload, args.json, lines)
+    # 有新增或持续越限 → 检出不符合（退出码 1）；全部整改完毕 → 0。
+    has_open = counts["new_violation"] > 0 or counts["persistent"] > 0
+    return EXIT_FINDINGS if has_open else EXIT_OK
+
+
 def cmd_bench(args) -> int:
     from .benchmark_runner import run_bench
 
@@ -216,6 +285,31 @@ def build_parser() -> argparse.ArgumentParser:
     p_rules = sub.add_parser("rules", parents=[common_data], help="规则库概览与门控计数")
     p_rules.add_argument("--json", action="store_true", help="输出机读 JSON")
     p_rules.set_defaults(func=cmd_rules)
+
+    p_scan = sub.add_parser("scan", parents=[common_data], help="批量扫描目录下全部车型档案")
+    p_scan.add_argument("directory", help="档案目录（*.json）")
+    p_scan.add_argument("--json", action="store_true", help="输出机读 JSON")
+    p_scan.add_argument(
+        "--version-of",
+        dest="version_of",
+        default=None,
+        help="显式指定标准版本键（跳过日期锚定）",
+    )
+    p_scan.set_defaults(func=cmd_scan)
+
+    p_compare = sub.add_parser(
+        "compare", parents=[common_data], help="跨轮对账（新增越限/已整改/持续越限）"
+    )
+    p_compare.add_argument("baseline", help="上轮档案目录")
+    p_compare.add_argument("current", help="本轮档案目录")
+    p_compare.add_argument("--json", action="store_true", help="输出机读 JSON")
+    p_compare.add_argument(
+        "--version-of",
+        dest="version_of",
+        default=None,
+        help="显式指定标准版本键（跳过日期锚定）",
+    )
+    p_compare.set_defaults(func=cmd_compare)
 
     p_bench = sub.add_parser("bench", parents=[common_data], help="内置评测基准")
     p_bench.add_argument("--only", default=None, help="只跑指定套件（未知名 → 退出码 2）")

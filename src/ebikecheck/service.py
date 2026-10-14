@@ -9,13 +9,21 @@ CLI 与 GUI（M5）都只经这里的公开函数取数 —— 于是"界面结�
 
 from __future__ import annotations
 
+import glob
+import json
 import os
 from typing import Any, Dict, List, Optional, Tuple
 
 from .engine import matrix, rules as rules_mod, version as version_mod
 from .engine.findings import DIMENSION_ORDER, CheckResult, ProfileCheckResult
 from .paths import data_dir_candidates, exe_dir, find_data_dir, is_frozen, within
-from .profile import Profile, load_profile, profile_from_dict
+from .profile import (
+    Profile,
+    ProfileError,
+    load_profile,
+    profile_from_dict,
+    profile_sha256_of_content,
+)
 
 #: 服务层错误（→ CLI 退出码 2）。
 class ServiceError(Exception):
@@ -288,6 +296,188 @@ def check_profile_all_versions(
     return results
 
 
+# ---- M3-2 批量扫描 + 失败件隔离（FR-09） ----
+
+#: 失败件原因码（运行期外部输入态；plan/02 §5.3 预留的 ``input_required`` 落点）。
+FAIL_REASON_UNREADABLE = "unreadable"      # 文件不可读 / 非 UTF-8
+FAIL_REASON_BAD_JSON = "bad_json"          # JSON 解析失败
+FAIL_REASON_BAD_SCHEMA = "bad_schema"      # 结构校验失败（ProfileError）
+
+
+def scan_dir(
+    directory: str,
+    data_dir: Optional[str] = None,
+    version_key: Optional[str] = None,
+    pattern: str = "*.json",
+) -> Dict[str, Any]:
+    """批量扫描一个目录下的车型档案（FR-09）。
+
+    纪律：
+
+    - **单件坏格式不中断整批**：异常件单列进 ``failed``（带原因码与错误摘要），
+      其余照常核查；``failed`` **不改变退出码语义**（O-5：0/1/2 三语义由
+      "判出不符合"决定，失败件与 ``not_provided`` 同为"未判定"）；
+    - 失败件（``failed``）与越限件（``findings``）**分列**，不混在一个桶里；
+    - 每件结果带档案 sha256（文件级 + 内容级，FR-11 证据链的批量通路）。
+    """
+    resolved = resolve_data_dir(data_dir)
+    manifest = rules_mod.load_manifest(resolved)
+    paths = sorted(glob.glob(os.path.join(directory, pattern)))
+    scanned: List[Dict[str, Any]] = []
+    failed: List[Dict[str, Any]] = []
+    results: List[CheckResult] = []
+    for path in paths:
+        try:
+            profile = load_profile(path)
+        except json.JSONDecodeError as error:
+            failed.append(
+                {
+                    "path": path,
+                    "reason": FAIL_REASON_BAD_JSON,
+                    "detail": str(error),
+                }
+            )
+            continue
+        except ProfileError as error:
+            failed.append(
+                {
+                    "path": path,
+                    "reason": FAIL_REASON_BAD_SCHEMA,
+                    "detail": str(error),
+                }
+            )
+            continue
+        except UnicodeDecodeError:
+            failed.append(
+                {
+                    "path": path,
+                    "reason": FAIL_REASON_UNREADABLE,
+                    "detail": "文件不是合法 UTF-8 文本",
+                }
+            )
+            continue
+        except OSError as error:
+            failed.append(
+                {
+                    "path": path,
+                    "reason": FAIL_REASON_UNREADABLE,
+                    "detail": str(error),
+                }
+            )
+            continue
+        try:
+            result = check_profile_obj(profile, resolved, manifest, version_key)
+        except ServiceError as error:
+            # 版本锚定失败等档案级语义错误：同样单列，不中断整批。
+            failed.append(
+                {
+                    "path": path,
+                    "reason": FAIL_REASON_BAD_SCHEMA,
+                    "detail": str(error),
+                }
+            )
+            continue
+        results.append(result)
+        scanned.append(
+            {
+                "path": path,
+                "profile_id": profile.profile_id,
+                "profile_sha256": profile.sha256,
+                "profile_content_sha256": profile_sha256_of_content(profile.raw),
+                "overall": result.overall(),
+                "counts": result.counts(),
+            }
+        )
+    nonpass = [
+        {
+            "profile_id": item.profile_id,
+            "overall": item.overall(),
+            "nonpass_params": _nonpass_params(item),
+        }
+        for item in results
+        if item.overall() != "compliant" or _nonpass_params(item)
+    ]
+    return {
+        "schema": "ebikecheck.scan/1.0",
+        "directory": directory,
+        "pattern": pattern,
+        "total": len(paths),
+        "scanned": scanned,
+        "failed": failed,
+        "nonpass": nonpass,
+        "overall_counts": _scan_counts(results),
+    }
+
+
+def _nonpass_params(result: CheckResult) -> List[str]:
+    """该档案参数级"非通过"参数名清单（口径：``benchmark.cases.observed_nonpass``）。"""
+    from .benchmark.cases import observed_nonpass
+
+    return [param for param, _state in observed_nonpass(result)]
+
+
+def _scan_counts(results: List[CheckResult]) -> Dict[str, int]:
+    out: Dict[str, int] = {"compliant": 0, "non_compliant": 0, "other": 0}
+    for result in results:
+        state = result.overall()
+        if state in out:
+            out[state] += 1
+        else:
+            out["other"] += 1
+    out["failed_separate"] = 0  # 失败件在 failed 列表单独计数，不混入
+    return out
+
+
+# ---- M3-3 跨轮对账（FR-10） ----
+
+
+def compare_rounds(
+    baseline_dir: str,
+    current_dir: str,
+    data_dir: Optional[str] = None,
+    version_key: Optional[str] = None,
+) -> Dict[str, Any]:
+    """两轮扫描目录对账（三集合：新增越限 / 已整改 / 持续越限）。
+
+    配对主键 = ``profile_id``（稳定身份键，非内容指纹）；参数级口径单一实现源
+    为 ``benchmark.cases.observed_nonpass``（O-12 纪律的 M3 落点）。
+    """
+    from .engine.reconcile import reconcile_rounds
+
+    baseline_scan = scan_dir(baseline_dir, data_dir, version_key)
+    current_scan = scan_dir(current_dir, data_dir, version_key)
+    baseline = _results_of_scan(baseline_scan, baseline_dir, data_dir, version_key)
+    current = _results_of_scan(current_scan, current_dir, data_dir, version_key)
+    reconciliation = reconcile_rounds(baseline, current)
+    return {
+        "schema": "ebikecheck.reconciliation.report/1.0",
+        "baseline_dir": baseline_dir,
+        "current_dir": current_dir,
+        "reconciliation": reconciliation.to_dict(),
+        "baseline_failed": baseline_scan["failed"],
+        "current_failed": current_scan["failed"],
+    }
+
+
+def _results_of_scan(
+    scan_payload: Dict[str, Any], directory: str, data_dir: Optional[str], version_key: Optional[str]
+) -> List[CheckResult]:
+    """从扫描 payload 还原逐件 ``CheckResult``（对账复用同一装配，与单件口径同源）。"""
+    resolved = resolve_data_dir(data_dir)
+    manifest = rules_mod.load_manifest(resolved)
+    results: List[CheckResult] = []
+    for item in scan_payload.get("scanned", []):
+        try:
+            profile = load_profile(item["path"])
+        except (ProfileError, OSError):
+            continue
+        try:
+            results.append(check_profile_obj(profile, resolved, manifest, version_key))
+        except ServiceError:
+            continue
+    return results
+
+
 def ruleset_overview(data_dir: Optional[str] = None) -> Dict[str, Any]:
     """规则库概览（报告"规则包坐标"与门控"未启用"节的数据来源）。"""
     resolved = resolve_data_dir(data_dir)
@@ -319,4 +509,80 @@ def ruleset_overview(data_dir: Optional[str] = None) -> Dict[str, Any]:
         "rulesets": entries,
         "version_anchors": manifest.version_anchors,
         "thresholds": manifest.thresholds,
+    }
+
+
+# ---- M3-4 证据链（FR-11） ----
+
+
+class TraceabilityError(ServiceError):
+    """溯源完整性断言失败（明细与溯源对不上 / 引用 id 不可解析）→ 拒绝交出。"""
+
+
+def assert_traceability(result: ProfileCheckResult) -> None:
+    """溯源完整性硬断言（NFR-10）：导出/交出前必须通过，不满足即拒。
+
+    三条：
+
+    1. **明细行数 == 溯源行数**：每条 finding 必须能在该维度的
+       ``source_blocks`` 里按 ``(param, standard)`` 找到来源块；
+    2. **引用 id 可解析**：每条 finding 的 ``rule_id`` 必须能在该维度
+       ``effective_rules`` 的产物坐标里回查 —— 这里以 ``source_blocks``
+       的参数级来源为准（规则 id 与来源块同源于同一分册）；
+    3. **指纹在位**：档案 sha256 非空（文件通路加载即有；内存通路显式给出）。
+    """
+    if not result.profile_sha256:
+        raise TraceabilityError(
+            "档案 sha256 缺失（证据链断链：结论无法挂到输入指纹）"
+        )
+    for dimension in result.dimensions:
+        blocks = {
+            (block.get("param"), block.get("standard"))
+            for block in dimension.source_blocks
+        }
+        for finding in dimension.findings:
+            if (finding.param, finding.standard) not in blocks:
+                raise TraceabilityError(
+                    "溯源完整性失败: 维度 {0} finding {1}（参数 {2}）无对应来源块".format(
+                        dimension.scope, finding.rule_id, finding.param
+                    )
+                )
+    if len(result.source_blocks) != sum(
+        len(dimension.source_blocks) for dimension in result.dimensions
+    ):  # 防御性：并集视图与逐维度之和必须一致（结构性质，正常恒真）
+        raise TraceabilityError("溯源完整性失败: 来源块并集视图与逐维度之和不一致")
+
+
+def evidence_chain(result: ProfileCheckResult) -> Dict[str, Any]:
+    """证据链装配（FR-11）：档案 + 报告双 sha256 + 规则包坐标 + 溯源断言。
+
+    - 档案指纹：``profile_sha256``（加载时落定的文件级 sha256）；
+    - 报告指纹：对**结果载荷**（``to_dict()``，含全部 findings 与来源块）的
+      规范 JSON 取 sha256 —— 报告被改动即可检出；
+    - 调用前先跑 :func:`assert_traceability`，断言失败直接抛
+      :class:`TraceabilityError`（**拒交出**，不降级为警告）。
+    """
+    assert_traceability(result)
+    from .io_utils import sha256_bytes
+
+    payload = result.to_dict()
+    canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    report_sha256 = sha256_bytes(canonical.encode("utf-8"))
+    rulesets = [
+        {
+            "scope": dimension.scope,
+            "standard": dimension.standard,
+            "file": dimension.ruleset_file,
+            "sha256": dimension.ruleset_sha256,
+            "version_key": dimension.version_key,
+        }
+        for dimension in result.dimensions
+    ]
+    return {
+        "schema": "ebikecheck.evidence/1.0",
+        "profile_id": result.profile_id,
+        "profile_sha256": result.profile_sha256,
+        "report_sha256": report_sha256,
+        "rulesets": rulesets,
+        "traceability": "ok",
     }
