@@ -44,8 +44,11 @@
 ### 1.3 建仓与 CI（M6-3）
 
 - 私有仓 `yuluo554/e-bike-compliance-checker`（D-31 先私有跑 CI）；
-- push 数 = run 数 = **2**，逐提交配对：7baf128 首推 run **失败**（与 M6-2 同因：dev 缺 Pillow）→
-  e117602 修复 run **38519270253 三矩阵全绿**（ubuntu/py3.12 + windows/py3.8 + windows/py3.12）；
+- 收官期共 4 次 push = 4 个 run，逐提交配对：7baf128 首推 run **失败**（与 M6-2 同因：dev 缺 Pillow）→
+  e117602 修复 run **三矩阵全绿** → 48bbe6f（收官提交第一版）run **失败**——**CI 抓到了我自己的新文档**：
+  Q-1 口径描述里逐字写了上游邮箱与 Qt 构建路径原文，tracked 扫描面判 HARD（本地审计时两文件尚未入库所以没拦到）→
+  按本仓纪律改为片段拼接后 amend（b7764d7）+ force push 洗净历史 → 最终 run **38522969690 三矩阵全绿**；
+  含敏感回显的失败 run 日志已 （转公开前必做）；
 - `fetch-depth: 0` 在位（历史扫描依赖全量历史，D-25）；远端 tip 与本地一致（经 API 核对）。
 
 **诚实记录**：CI 首跑失败不遮掩，README 的 M0 诚实说明已回填配对说明。
