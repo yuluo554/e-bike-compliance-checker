@@ -113,7 +113,7 @@ py -3.12 -m PyInstaller tools/ebikecheck.spec --noconfirm
 # 冻结态自检：ebikecheck-cli.exe selfcheck → frozen=True / data_dir_within_exe_dir=True
 ```
 
-**发布**（M6 已完成）：GitHub Release `v0.1.0` 附双 exe zip（sha256 留档与真下载核对见 [docs/release-sha256.md](docs/release-sha256.md)）。本轮迭代的 `v0.1.1` 产物已在本地按同口径重建并留档（同文件 v0.1.1 节），**打 tag / 发 Release 由仓库所有者执行**。
+**发布**：GitHub Release `v0.1.0`（M6）与 **`v0.1.1`（2026-10-19，本轮迭代）**，均附双 exe zip；sha256 留档与真下载核对见 [docs/release-sha256.md](docs/release-sha256.md)。
 
 ### CLI 退出码
 

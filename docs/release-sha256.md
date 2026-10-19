@@ -1,10 +1,15 @@
-# Release 附件 sha256 留档（M6）
+# Release 附件 sha256 留档
 
-留档时间：2026-10-14（发布期基准日）
+留档时间：2026-10-14（M6 基准日）/ 2026-10-19（v0.1.1 迭代）
 仓库：github.com/yuluo554/e-bike-compliance-checker（私有 → 发布期转公开，D-31）
-源码锚点：main @ e117602（M6 dev-extras 修复；CI run 38519270253 三矩阵全绿）
+源码锚点：v0.1.1 = main @ `73d0182`；v0.1.0 = main @ `e117602`（M6 dev-extras 修复）
 
-## v0.1.1（2026-10-19，本地已打包；**未打 tag / 未发 Release**）
+## v0.1.1（2026-10-19，**已发布**）
+
+- tag：`v0.1.1` → `73d0182`
+- Release：https://github.com/yuluo554/e-bike-compliance-checker/releases/tag/v0.1.1
+- CI：push run [39270920595](https://github.com/yuluo554/e-bike-compliance-checker/actions/runs/39270920595) **success**
+  （2 job：windows/ubuntu × py3.12；含 `audit_desensitize.py --mode all` 步骤）
 
 | 附件名（ASCII） | 内容 | sha256 | 字节数 |
 |---|---|---|---|
@@ -14,13 +19,25 @@
   （迭代 D-47 后 `gui`/`build` extras 的下限，见 [plan/06 §1.6](../plan/06-决策记录.md)）；
 - 打包口径与 v0.1.0 相同（`ZIP_STORED` + 条目按路径排序 + 全部条目 `date_time=(2026,10,14,0,0,0)`）；
   本地两次独立打包**逐字节一致**（194 条目，`zf.testzip()` OK）；
-- 冻结态自检：`ebikecheck-cli.exe version` → `ebikecheck 0.1.1`；`selfcheck` rc 0
-  （`冻结态: True`、`数据在 exe 目录内: True`、verified=13/pending=4）；`bench` rc 0
-  （八套件达标，耗时 0.135s，上限 1.0s）；
 - 产物本体脱敏扫描（仓内工具复跑）：`py -3.12 tools/audit_desensitize.py --mode dist --dist-dir dist`
   → `DESSENSITIZE_AUDIT_OK`（HARD=0，上游固有元数据精确值豁免单列）；
-- **发布动作由用户本人执行**：打 tag `v0.1.1` + `gh release create` + 上传 zip（涉及 2FA）；
-  执行方不自宣发布。**不要移动远端已有 tag `v0.1.0`**（指向 `e117602`）。
+- **不要移动远端已有 tag `v0.1.0`**（指向 `e117602`）。
+
+### 发布后验证记录（2026-10-19，实测）
+
+1. **真下载**：`gh release download v0.1.1` 从 GitHub Release 真实下载附件（125,273,126 字节）；
+2. **sha256 三方一致**：下载件 = 本地 `dist/release/` 同名 zip = Release 附件 digest
+   `5246fe64bfe8c4549a275c67b2039a608db4264f7e9814e7da2948f20f956d0e`；
+3. **中立目录解包**：解包到仓库外临时目录，清 `PYTHONPATH`/`PYTHONHOME`、CWD 为独立 witness 目录：
+   - `ebikecheck-cli.exe version` → `ebikecheck 0.1.1`（rc 0）；
+   - `selfcheck` → rc 0（`冻结态: True`、`数据在 exe 目录内: True`、verified=13/pending=4）；
+   - `bench` → rc 0（八套件达标，耗时 0.179s，上限 1.0s）；
+   - 退出码语义抽查：`check` 直接喂真值用例 → rc **2**（缺顶层 `profile_id`，符合预期）、`rules`/`diff` rc 0；
+4. **干净 clone + 新 venv 复验**：`git clone` 远端（tag `v0.1.0`/`v0.1.1` 均在）→ 全新 venv
+   `pip install -e ".[dev,gui,build]"`（PySide6 6.12.0 / PyInstaller 6.22.3）→
+   `pytest` = **233 passed, 1 skipped**（skip = 无 `dist/` 时的产物本体扫描）、
+   `check`/`scan`/`diff-profile`/`export`/`bench`/零字面量/四生成器/`--mode all` 全绿；
+   `compare` 两轮同档 → rc 1（既有对账口径：`not_provided` 计入"持续越限"，本轮未改，README 已注明）。
 
 ## v0.1.0 附件（M6，已发布）
 
