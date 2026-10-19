@@ -14,22 +14,20 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # 旧解释器只在 Windows 守（Ubuntu 新镜像对 3.8 支持存疑，见 plan/06 D-24）。
-          - os: windows-latest
-            python: "3.8"
+          # Python 3.8 已于 2024-10-07 EOL；迭代（2026-10-19，D-45）抬 floor 至 3.12。
           - os: windows-latest
             python: "3.12"
           - os: ubuntu-latest
             python: "3.12"
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # 脱敏审计的历史扫描依赖全量 git 历史；浅克隆会静默削弱成空验。
           fetch-depth: 0
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
 
@@ -55,6 +53,9 @@ jobs:
 
       - name: Desensitize audit
         run: python tools/audit_desensitize.py --selftest
+
+      - name: Desensitize audit (tracked history messages)
+        run: python tools/audit_desensitize.py --mode all
 
       - name: CLI smoke
         run: |

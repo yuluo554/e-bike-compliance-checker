@@ -1,5 +1,10 @@
 # e-bike-compliance-checker
 
+[![CI](https://github.com/yuluo554/e-bike-compliance-checker/actions/workflows/ci.yml/badge.svg)](https://github.com/yuluo554/e-bike-compliance-checker/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/yuluo554/e-bike-compliance-checker)](https://github.com/yuluo554/e-bike-compliance-checker/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.12%2B-blue.svg)](pyproject.toml)
+
 电动自行车合规核查工作台 —— 以强制性国家标准 **GB 17761—2024《电动自行车安全技术规范》**（发布 2024-12-31，**实施 2025-09-01**，代替 GB 17761—2018）、**GB 43854—2024《电动自行车用锂离子蓄电池安全技术规范》**、**GB 42296—2022《电动自行车用充电器安全技术要求》** 为规则源，把**整车/蓄电池/充电器三维限值矩阵 + 字段映射 + 双版本对照 + 车型清单批量对账 + 报告导出**做成**逐项挂标准条款与数值依据、可复现、留指纹**的本地工具（桌面 exe + CLI 双形态）。
 
 > 本地目录 `10-14-e-bike-compliance-checker`（`10-14` = 2026-10-14 日期标签）。GitHub 仓库名发布时用纯净名 `e-bike-compliance-checker`，见 [plan/00-README总览.md](plan/00-README总览.md)。
@@ -9,6 +14,14 @@
 > 状态：✅ **M6 脱敏发布已完成（2026-10-14）**——M5 桌面交付（报告导出 `export`：Markdown + XLSX 单一渲染源、逐字节可复现、无外链、证据指纹；PySide6 界面 `gui`：四页签零判定逻辑；PyInstaller onedir 双 exe）之上，M6 完成：**GitHub 建仓 + CI 三矩阵全绿**（windows py3.8/py3.12 + ubuntu py3.12，push 数 = run 数对账）、**Release v0.1.0**（双 exe 附件，sha256 留档 `docs/release-sha256.md` + 真下载核对一致）、**干净环境验证**（git archive 树 + 全新 venv 按 README 逐字跑通）、**发布物中立目录验证**（自检 frozen=True + bench 达标）。内置评测基准**八套件全绿**，226 项测试 3.8/3.12 双绿。技术报告见 [docs/技术报告.md](docs/技术报告.md)。
 
 ---
+
+## 演示
+
+![工作台示意：单车核查 / 批量扫描 / 版本差异三帧](docs/assets/demo-overview.gif)
+
+> 素材由 `tools/gen_demo_assets.py` **程序化产出**（三帧 PNG + GIF，两次生成 sha256 一致，
+> `tests/test_m5_demo_assets.py` 守门）——是**示意图**（640×360，16 色调色板），不是界面截图；
+> 真实界面以你本机 `ebikecheck gui` 运行结果为准。
 
 ## 它解决什么问题
 
@@ -51,7 +64,7 @@
 
 ## 快速开始（M0 已可跑）
 
-要求 Python 3.8+（核心功能无第三方依赖）。
+要求 Python 3.12+（核心功能无第三方依赖）。
 
 ```bash
 python -m venv .venv
@@ -64,23 +77,30 @@ python -m pip install -e ".[dev]"
 
 ```bash
 ebikecheck selfcheck                 # 数据目录定位 + 规则库加载 + status 门控计数（+ 冻结态自检）
-ebikecheck check <车型.json>         # 单车型三维核查：整车 + 电池 + 充电器 + 统一结论（--json / --version-of）
-ebikecheck scan <目录>               # 批量扫描：失败件单列原因码（不改退出码语义），与越限件分列
-ebikecheck compare <上轮目录> <本轮目录>  # 跨轮对账三集合：新增越限 / 已整改 / 持续越限
+ebikecheck check examples/sample-profile.json   # 单车型三维核查：整车 + 电池 + 充电器 + 统一结论（--json / --version-of）
+ebikecheck scan examples             # 批量扫描：失败件单列原因码（不改退出码语义），与越限件分列
+# 跨轮对账：构造两轮目录（示例档案同时放入两轮 = 最简可复现输入）
+mkdir -p "$TEMP/ebikecheck-round1" "$TEMP/ebikecheck-round2"
+cp examples/sample-profile.json "$TEMP/ebikecheck-round1/"
+cp examples/sample-profile.json "$TEMP/ebikecheck-round2/"
+ebikecheck compare "$TEMP/ebikecheck-round1" "$TEMP/ebikecheck-round2"  # 跨轮对账三集合：新增越限 / 已整改 / 持续越限
+#   注意：示例档案只覆盖 6 个参数，对账把 `not_provided` 也计入"持续越限"集合 →
+#   本例退出码为 1（现有对账口径，本轮迭代未改）；纯链路验证看上面 check/scan/diff-profile/export 四条
 ebikecheck diff                      # 两版规则包差异对照（从规则包 diff 生成；--old/--new 显式指定）
-ebikecheck diff-profile <车型.json>  # 同一档案在两版规则下逐参数结论对照
-ebikecheck export <车型.json> --out-dir <目录>   # 报告导出（Markdown + XLSX 单一渲染源；--generated-at 输入侧时间）
+ebikecheck diff-profile examples/sample-profile.json  # 同一档案在两版规则下逐参数结论对照
+ebikecheck export examples/sample-profile.json --out-dir "$TEMP/ebikecheck-report"   # 报告导出（Markdown + XLSX 单一渲染源；--generated-at 输入侧时间）
 ebikecheck gui                       # 桌面界面（PySide6 四页签；需 extras: pip install -e ".[gui]"）
 ebikecheck rules                     # 规则库概览与逐册门控计数
 ebikecheck bench                     # 内置评测基准（八套件，门槛自 manifest 下发）
 ebikecheck version
-python -m pytest -q                  # 测试套件（226 项）
+python -m pytest -q                  # 测试套件（234 项）
 python tools/gen_rulesets.py --check # 规则包冻结守门（再生成逐字节一致）
 python tools/gen_synthetic.py --check# 真值库冻结守门
 python tools/gen_mapping.py --check  # 字段映射表冻结守门
 python tools/gen_knowledge.py --check# 依据索引冻结守门
 python tools/check_zero_literals.py  # 零字面量门禁
-python tools/audit_desensitize.py    # 脱敏审计（三模式 + selftest）
+python tools/audit_desensitize.py    # 脱敏审计（tracked/history/messages + selftest）
+python tools/audit_desensitize.py --mode dist --dist-dir dist  # 构建产物本体扫描（上游固有元数据豁免单列）
 python tools/gen_demo_assets.py      # 演示素材程序化产出（PNG + GIF，两次生成 sha256 一致）
 ```
 
@@ -93,7 +113,7 @@ py -3.12 -m PyInstaller tools/ebikecheck.spec --noconfirm
 # 冻结态自检：ebikecheck-cli.exe selfcheck → frozen=True / data_dir_within_exe_dir=True
 ```
 
-**发布**（M6 已完成）：GitHub Release `v0.1.0` 附双 exe zip（sha256 留档与真下载核对见 [docs/release-sha256.md](docs/release-sha256.md)）。
+**发布**（M6 已完成）：GitHub Release `v0.1.0` 附双 exe zip（sha256 留档与真下载核对见 [docs/release-sha256.md](docs/release-sha256.md)）。本轮迭代的 `v0.1.1` 产物已在本地按同口径重建并留档（同文件 v0.1.1 节），**打 tag / 发 Release 由仓库所有者执行**。
 
 ### CLI 退出码
 
@@ -135,7 +155,7 @@ py -3.12 -m PyInstaller tools/ebikecheck.spec --noconfirm
 | `mapping` | **规则驱动** | 字段映射：全部已登记变体精确命中 + 歧义列名判 uncertain + 未登记判 unmapped | 84/84 | 0.98 | ✅ True |
 | `reconcile` | 样本驱动 | 跨轮对账三集合语义端到端（真值库构造整改/新增/缺失件场景） | 3/3 | 1.0 | ✅ True |
 
-总耗时 0.059s（上限 1.0s，随 manifest 下发；`bench_max_seconds`）。`boundary` / `rule_driven` /
+总耗时 ≈0.12 s（实测 0.115 s 源码态 / 0.13 s 冻结 exe；上限 1.0s，随 manifest 下发；`bench_max_seconds`）。`boundary` / `rule_driven` /
 `dimensions` / `mapping` **不读真值库**，只从规则包/映射表推导 —— 新增规则或映射条目自动进枚举，无需改基准代码。
 
 ## 报告导出与桌面界面（M5）
@@ -160,7 +180,7 @@ py -3.12 -m PyInstaller tools/ebikecheck.spec --noconfirm
 ```bash
 ebikecheck diff                      # 两版规则包差异（--old/--new 显式指定版本键，缺省按发布日取两端）
 ebikecheck diff --json               # 机读载荷（含两版分册 file + sha256，可溯源）
-ebikecheck diff-profile <车型.json>  # 同一档案两版逐参数结论对照（动态半边）
+ebikecheck diff-profile examples/sample-profile.json  # 同一档案两版逐参数结论对照（动态半边）
 ```
 
 ## 限制与免责

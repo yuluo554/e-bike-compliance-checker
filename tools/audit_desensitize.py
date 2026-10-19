@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""脱敏审计器（入仓可复跑）：tracked / history / messages 三模式 + selftest。
+"""脱敏审计器（入仓可复跑）：tracked / history / messages / dist 四模式 + selftest。
 
 **输出一律不回显敏感原文**（只报 ``文件:行号 [类别] xN``），因此审计报告可随仓留档。
 
@@ -8,6 +8,13 @@
 - ``HARD``      → 退出码 1（真实泄露形态：个人邮箱、手机号、用户目录路径、密钥）
 - ``REVIEW``    → 只提示（系统目录、其他盘符路径等需人工豁免留档）
 - ``advisory``  → 只报不阻断（长 hex 串：**本项目的 sha256 指纹是文档化功能**）
+
+模式：
+
+- ``tracked`` / ``history`` / ``messages`` —— 源码树、git 历史、提交信息；
+- ``dist`` —— 构建产物本体（默认 ``dist/``）：文本按行扫、二进制按字节解码后扫；
+  上游官方发行件固有元数据（CPython/OpenSSL/bzip2 维护者邮箱、Qt 构建机路径、
+  厂商串）由 :mod:`dist_allowlist` **精确值**豁免并单列，其余命中照常判级。
 
 豁免（并进阴性对照）：
 
@@ -28,9 +35,13 @@ import sys
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.dirname(_HERE)
-sys.path.insert(0, os.path.join(_ROOT, "src"))
+for _candidate in (_HERE, os.path.join(_ROOT, "src")):
+    if _candidate not in sys.path:
+        sys.path.insert(0, _candidate)
 
 from ebikecheck.io_utils import _ensure_utf8_stdio, iter_text_files, read_text  # noqa: E402
+
+import dist_allowlist  # noqa: E402  （同目录；上游固有元数据豁免清单，片段拼接）
 
 MARKER = "audit-allow"
 
@@ -75,13 +86,15 @@ BINARY_SUFFIXES = (".png", ".jpg", ".jpeg", ".gif", ".ico", ".exe", ".zip", ".pd
 
 
 class Hit:
-    def __init__(self, path, line_no, category, level, count=1, note=""):
+    def __init__(self, path, line_no, category, level, count=1, note="", value=""):
         self.path = path
         self.line_no = line_no
         self.category = category
         self.level = level
         self.count = count
         self.note = note
+        #: 命中的**精确值**（仅扫描期内部使用，输出不回显）。
+        self.value = value
 
     def __str__(self):
         return "  {0}:{1} [{2}] x{3}{4}".format(
@@ -90,14 +103,44 @@ class Hit:
         )
 
 
-def _classify_email(value):
+#: 常见通用顶级域（缺省集；加任意两字母小写国别域 —— 即"像域名"才判 HARD）。
+_COMMON_GTLDS = frozenset(
+    (
+        "com", "org", "net", "edu", "gov", "mil", "int", "info", "biz", "name", "pro",
+        "mobi", "asia", "jobs", "tel", "travel", "museum", "aero", "coop", "io", "co",
+        "ai", "dev", "app", "tech", "cloud", "online", "site", "xyz", "me", "tv", "cc",
+    )
+)
+
+
+def _email_tld_plausible(value):
+    """二进制里"像邮箱"才判 HARD。
+
+    实测坑：二进制字节流会随机拼出形如 ``x@y.z``（单字母顶级域）或宿主名式
+    ``user@hostidentifier`` 的形态。规则 = 顶级域是**任意两字母小写国别域**或
+    **常见通用域**；不满足的降为 ``REVIEW``（**仍然报出**，只是不阻断）——
+    既不静默丢，也不让噪声卡住门禁。
+    """
+    tld = value.rsplit(".", 1)[-1]
+    if len(tld) == 2 and tld.isalpha() and tld.islower():
+        return True
+    return tld.lower() in _COMMON_GTLDS
+
+
+def _classify_email(value, binary=False):
     if NOREPLY_RE.match(value) or TRANSPORT_RE.match(value):
         return None
+    if binary and not _email_tld_plausible(value):
+        return ("email-suspect", "REVIEW")
     return ("email", "HARD")
 
 
-def scan_text(text, path, line_offset=0):
-    """扫描一段文本；返回命中列表。"""
+def scan_text(text, path, line_offset=0, binary=False):
+    """扫描一段文本；返回命中列表。
+
+    ``binary=True``（构建产物本体）时，随机字节拼出的"邮箱形态"降为 REVIEW，
+    避免噪声卡住门禁；真实形态的正负对照由 ``--selftest`` 守住。
+    """
     hits = []
     lines = text.splitlines()
     for index, line in enumerate(lines, start=1):
@@ -106,18 +149,34 @@ def scan_text(text, path, line_offset=0):
         line_no = index + line_offset
         emails = EMAIL_RE.findall(line)
         for value in emails:
-            verdict = _classify_email(value)
+            verdict = _classify_email(value, binary=binary)
             if verdict:
-                hits.append(Hit(path, line_no, verdict[0], verdict[1]))
+                note = (
+                    "二进制度量：不像真实邮箱，需人工确认"
+                    if verdict[1] == "REVIEW"
+                    else ""
+                )
+                hits.append(
+                    Hit(path, line_no, verdict[0], verdict[1], note=note, value=value)
+                )
         # 排除邮箱局部与 GitHub URL 之后再判手机号/身份证，降噪。
         scrubbed = EMAIL_RE.sub(" ", line)
         scrubbed = GITHUB_URL_RE.sub(" ", scrubbed)
-        if PHONE_RE.search(scrubbed):
-            hits.append(Hit(path, line_no, "phone-like", "HARD"))
-        if IDCARD_RE.search(scrubbed):
-            hits.append(Hit(path, line_no, "idcard-like", "HARD"))
-        if KEY_RE.search(scrubbed):
-            hits.append(Hit(path, line_no, "secret-key", "HARD"))
+        phone = PHONE_RE.search(scrubbed)
+        if phone:
+            hits.append(
+                Hit(path, line_no, "phone-like", "HARD", value=phone.group(0))
+            )
+        idcard = IDCARD_RE.search(scrubbed)
+        if idcard:
+            hits.append(
+                Hit(path, line_no, "idcard-like", "HARD", value=idcard.group(0))
+            )
+        key = KEY_RE.search(scrubbed)
+        if key:
+            hits.append(
+                Hit(path, line_no, "secret-key", "HARD", value=key.group(0))
+            )
         if _SEG["user_dir_win"] in line or POSIX_HOME_RE.search(line) or _SEG["user_dir_mac"] in line:
             hits.append(Hit(path, line_no, "user-home-path", "HARD"))
         if _SEG["progdata"] in line and _local_user_hint():
@@ -187,7 +246,63 @@ def mode_messages():
     return scan_text(text, "commit-messages")
 
 
-def summarize(hits, modes):
+def _suppress_upstream(text):
+    """把上游固有元数据（精确值）替换为等长占位，返回 (text, 计数表)。
+
+    计数表键为 :data:`dist_allowlist.ENTRIES` 的下标 —— 输出只报出处，不回显值。
+    """
+    counts = {}
+    for index, entry in enumerate(dist_allowlist.ENTRIES):
+        value = entry["value"]
+        found = text.count(value)
+        if found:
+            counts[index] = found
+            text = text.replace(value, "\x00" * len(value))
+    return text, counts
+
+
+def mode_dist(dist_dir=None):
+    """构建产物本体扫描：``dist/``（或 ``--dist-dir``）下全部文件。
+
+    文本类按 UTF-8 解码逐行扫，二进制按 latin-1 解码后扫（等价于字节子串扫，
+    且保留行号语义）；上游固有元数据先精确替换再扫。
+    """
+    root = os.path.abspath(dist_dir or os.path.join(_ROOT, "dist"))
+    if not os.path.isdir(root):
+        return None, "missing:{0}".format(root)
+
+    hits = []
+    suppressed = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = sorted(name for name in dirnames if name != "__pycache__")
+        for name in sorted(filenames):
+            path = os.path.join(dirpath, name)
+            try:
+                # 报告用：尽量给仓库相对路径；扫描根在别的盘符（如 selftest 的
+                # 临时目录）时 relpath 会抛 ValueError，回落到扫描根相对路径。
+                relative = os.path.relpath(path, _ROOT)
+            except ValueError:
+                relative = os.path.relpath(path, root)
+            try:
+                with open(path, "rb") as handle:
+                    payload = handle.read()
+            except OSError:
+                continue
+            is_text = name.endswith(TEXT_SUFFIXES)
+            text = payload.decode("utf-8", "replace") if is_text else payload.decode("latin-1")
+            text, counts = _suppress_upstream(text)
+            for index, found in sorted(counts.items()):
+                entry = dist_allowlist.ENTRIES[index]
+                suppressed.append((entry["kind"], entry["source"], relative, found))
+            hits.extend(scan_text(text, relative, binary=not is_text))
+            # 本机用户名裸串（上游厂商串已被豁免替换，不会互相误伤）。
+            user_hint = _local_user_hint()
+            if user_hint and len(user_hint) >= 3 and user_hint in text:
+                hits.append(Hit(relative, 0, "local-username", "HARD", value=user_hint))
+    return (hits, suppressed), "ok"
+
+
+def summarize(hits, modes, suppressed=None):
     hard = [hit for hit in hits if hit.level == "HARD"]
     review = [hit for hit in hits if hit.level == "REVIEW"]
     advisory = [hit for hit in hits if hit.level == "advisory"]
@@ -198,6 +313,12 @@ def summarize(hits, modes):
             print(str(hit))
         if len(group) > 40:
             print("  … 其余 {0} 处略".format(len(group) - 40))
+    if suppressed is not None:
+        print("上游固有元数据豁免（精确值，不计入 HARD/REVIEW）: {0} 处".format(len(suppressed)))
+        for kind, source, relative, found in suppressed[:40]:
+            print("  [豁免] {0} ×{1} ({2}) | {3}".format(source, found, kind, relative))
+        if len(suppressed) > 40:
+            print("  … 其余 {0} 处略".format(len(suppressed) - 40))
     if hard:
         print("DESSENSITIZE_AUDIT_FAIL")
         return 1
@@ -279,6 +400,29 @@ def selftest():
     if [hit for hit in scan_text(allowed, "selftest-allow") if hit.level == "HARD"]:
         problems.append("阴性对照失败：audit-allow 行未被放过")
 
+    # 阳性：二进制模式里真实形态邮箱仍须 HARD（不能因为 binary 就整体降级）。
+    bin_pos = [hit for hit in scan_text("mail {0}".format(synthetic_email), "selftest-bin", binary=True) if hit.level == "HARD"]
+    if not bin_pos:
+        problems.append("阳性对照失败：二进制模式未判出真实形态邮箱")
+
+    # 阴性：二进制随机字节拼出的"邮箱形态"应降为 REVIEW，不得卡门禁。
+    # 词面片段拼接：本文件会被 --mode tracked 扫描，逐字写形态会自命中。
+    noise_one = "y" + "@" + "yMyQydy" + "." + "zP"
+    noise_two = "z" + "@" + "D" + "." + "setdefault"
+    noise_three = "ks_in" + "@" + "devanagari" + "." + "utf"
+    binary_noise = "\n".join([noise_one, noise_two, noise_three])
+    noise_hard = [hit for hit in scan_text(binary_noise, "selftest-bin-noise", binary=True) if hit.level == "HARD"]
+    if noise_hard:
+        problems.append("阴性对照失败：二进制噪声被判 HARD（{0}）".format(noise_hard[0].category))
+
+    # 阳性：上游豁免清单必须真的能消掉登记值（防"清单写了但没接上"）。
+    upstream_value = dist_allowlist.ENTRIES[0]["value"]
+    filtered, counts = _suppress_upstream("contact {0} end".format(upstream_value))
+    if not counts:
+        problems.append("阳性对照失败：上游豁免清单未命中登记值（清单与扫描器脱钩）")
+    if [hit for hit in scan_text(filtered, "selftest-upstream") if hit.level == "HARD"]:
+        problems.append("阳性对照失败：上游豁免后仍判 HARD")
+
     if problems:
         print("DESSENSITIZE_SELFTEST_FAIL")
         for problem in problems:
@@ -290,17 +434,30 @@ def selftest():
 
 def main(argv=None):
     _ensure_utf8_stdio()
-    parser = argparse.ArgumentParser(description="脱敏审计器（三模式 + selftest）")
+    parser = argparse.ArgumentParser(description="脱敏审计器（tracked/history/messages/dist + selftest）")
     parser.add_argument(
         "--mode",
-        choices=("tracked", "history", "messages", "all"),
+        choices=("tracked", "history", "messages", "dist", "all"),
         default="all",
+    )
+    parser.add_argument(
+        "--dist-dir",
+        default=None,
+        help="--mode dist 的扫描根（缺省 dist/）",
     )
     parser.add_argument("--selftest", action="store_true")
     args = parser.parse_args(argv)
 
     if args.selftest:
         return selftest()
+
+    if args.mode == "dist":
+        result, status = mode_dist(args.dist_dir)
+        if status.startswith("missing:"):
+            print("DESSENSITIZE_AUDIT_FAIL: 目录不存在 {0}".format(status.split(":", 1)[1]))
+            return 1
+        hits, suppressed = result
+        return summarize(hits, ["dist"], suppressed)
 
     modes = ["tracked", "history", "messages"] if args.mode == "all" else [args.mode]
     hits = []

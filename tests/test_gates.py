@@ -22,6 +22,7 @@ LF_REQUIRED_DIRS = (
     "tools",
     "tests",
     "data",
+    "examples",
     "plan",
     ".github",
 )
@@ -286,6 +287,68 @@ def test_desensitize_audit_has_positive_detection():
     assert hits, "审计器对合成邮箱无反应 → 扫描可能失效"
 
 
+def test_desensitize_dist_scan_is_clean():
+    """构建产物本体扫描：当前 ``dist/`` 必须无 HARD 命中。
+
+    上游固有元数据（CPython/OpenSSL/bzip2 维护者邮箱、Qt 构建机路径、厂商串）
+    由 ``tools/dist_allowlist.py`` 精确值豁免并单列；豁免清单**不是**"全部豁免"，
+    未登记的 HARD 仍会让命令以退出码 1 结束。
+    """
+    dist = os.path.join(ROOT, "dist")
+    if not os.path.isdir(dist):
+        pytest.skip("dist/ 不存在（未构建产物）→ 跳过本体扫描")
+    proc = subprocess.run(
+        [
+            sys.executable,
+            os.path.join(TOOLS, "audit_desensitize.py"),
+            "--mode",
+            "dist",
+            "--dist-dir",
+            dist,
+        ],
+        cwd=ROOT,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    output = proc.stdout.decode("utf-8", "replace")
+    assert proc.returncode == 0, output
+    assert "DESSENSITIZE_AUDIT_OK" in output
+    assert "[HARD] 0 处" in output
+
+
+def test_desensitize_dist_scan_has_positive_detection(tmp_path):
+    """探活：dist 模式对合成泄露目录必须非 0 退出（防"模式永远绿"）。"""
+    leak = tmp_path / "artifact.bin"
+    leak.write_bytes(b"\x00\x01 leak " + b"someone" + b"@" + b"example.com \x00")
+    proc = subprocess.run(
+        [
+            sys.executable,
+            os.path.join(TOOLS, "audit_desensitize.py"),
+            "--mode",
+            "dist",
+            "--dist-dir",
+            str(tmp_path),
+        ],
+        cwd=ROOT,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    output = proc.stdout.decode("utf-8", "replace")
+    assert proc.returncode == 1, output
+    assert "DESSENSITIZE_AUDIT_FAIL" in output
+
+
+def test_ci_runs_full_desensitize_audit():
+    """接线：CI 必须常驻全模式脱敏审计（公开仓库的历史不可撤回风险）。"""
+    path = os.path.join(ROOT, ".github", "workflows", "ci.yml")
+    with open(path, "r", encoding="utf-8", newline="") as handle:
+        text = handle.read()
+    assert "audit_desensitize.py --mode all" in text, "CI 未常驻 --mode all 脱敏审计"
+    # 浅克隆会让 history 扫描静默空跑 —— 全量历史断言由
+    # test_every_checkout_step_uses_full_history 覆盖。这里确认脚本真被调用。
+    assert "audit_desensitize.py --selftest" in text, "CI 丢了脱敏 selftest 正负对照"
+
+
 # ---- 品牌隔离（D-30） ----
 
 
@@ -309,6 +372,77 @@ def test_readme_states_data_discipline():
         text = handle.read()
     assert "合成" in text
     assert "SYN" in text
+
+
+# ---- README/技术报告可运行示例（接线断言） ----
+
+
+def _readme_paths(text):
+    """抽取文档里出现的仓内相对路径（``examples/...``）。
+
+    只认带扩展名的形态，避免把命令名当路径；``$TEMP``/``<目录>`` 等占位符天然不命中。
+    """
+    import re
+
+    return sorted(set(re.findall(r"examples/[A-Za-z0-9._/-]+\.json", text)))
+
+
+def test_sample_profile_exists_and_loads():
+    """仓内必须有可直接 ``check`` 的示例档案（README 命令的输入）。"""
+    from ebikecheck.profile import load_profile
+
+    path = os.path.join(ROOT, "examples", "sample-profile.json")
+    assert os.path.isfile(path), "缺少 examples/sample-profile.json"
+    profile = load_profile(path)
+    assert profile.profile_id, "示例档案缺少 profile_id"
+    assert profile.params, "示例档案缺少 params"
+
+
+def test_sample_profile_is_clean_and_check_exits_zero():
+    """示例必须是干净件：README 的示例命令若检出越限，陌生人会以为工具坏了。
+
+    示例档案取自真值库 ``SYN-CASE-001`` 的 ``profile`` 对象（只覆盖 6 个参数），
+    因此整体结论是「未提供」而不是「符合」——**未提供不改退出码**，这里断言的是
+    「无不符合项 + 退出码 0」，而不是硬编码某个结论标签。
+    """
+    path = os.path.join(ROOT, "examples", "sample-profile.json")
+    env = dict(os.environ)
+    env["PYTHONPATH"] = SRC
+    proc = subprocess.run(
+        [sys.executable, "-m", "ebikecheck", "check", path],
+        cwd=ROOT,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    output = proc.stdout.decode("utf-8", "replace")
+    assert proc.returncode == 0, output
+    assert "不符合 0" in output, output
+    assert "统一结论: 不符合" not in output, output
+
+
+def test_documented_example_paths_exist():
+    """README 与技术报告里出现的 ``examples/*.json`` 必须真实存在（防文档漂移）。"""
+    missing = []
+    for relative in ("README.md", os.path.join("docs", "技术报告.md")):
+        with open(os.path.join(ROOT, relative), "r", encoding="utf-8", newline="") as handle:
+            text = handle.read()
+        for item in _readme_paths(text):
+            if not os.path.isfile(os.path.join(ROOT, item)):
+                missing.append("{0} -> {1}".format(relative, item))
+    assert not missing, "文档引用了不存在的示例路径: {0}".format(missing)
+
+
+def test_readme_commands_use_example_profile():
+    """README 的 check/diff-profile/export 三条命令必须指向仓内示例档案。"""
+    with open(os.path.join(ROOT, "README.md"), "r", encoding="utf-8", newline="") as handle:
+        text = handle.read()
+    for command in ("ebikecheck check", "ebikecheck diff-profile", "ebikecheck export"):
+        matching = [line for line in text.splitlines() if line.strip().startswith(command)]
+        assert matching, "README 缺少命令: {0}".format(command)
+        assert any("examples/sample-profile.json" in line for line in matching), (
+            "README 的 {0} 未指向 examples/sample-profile.json: {1}".format(command, matching)
+        )
 
 
 # ---- 编码守卫（所有会打印的入口） ----
@@ -501,6 +635,11 @@ def test_every_checkout_step_uses_full_history():
 
 
 def test_ci_matrix_covers_declared_targets():
+    """CI 矩阵必须与 ``requires-python`` 口径一致。
+
+    规格变更（2026-10-19，D-45）：Python 3.8 于 2024-10-07 EOL，floor 抬到 3.12，
+    故 3.8 作业被**移除**，此断言随之从"含 3.8"改为"不含 3.8"（不是放宽口径）。
+    """
     yaml = pytest.importorskip("yaml")
     path = os.path.join(ROOT, ".github", "workflows", "ci.yml")
     with open(path, "r", encoding="utf-8", newline="") as handle:
@@ -508,9 +647,29 @@ def test_ci_matrix_covers_declared_targets():
     job = payload["jobs"]["test"]
     matrix = job["strategy"]["matrix"]["include"]
     combos = {(item["os"], str(item["python"])) for item in matrix}
-    assert ("windows-latest", "3.8") in combos
     assert ("windows-latest", "3.12") in combos
     assert ("ubuntu-latest", "3.12") in combos
+    assert not any(python.startswith("3.8") for _, python in combos), (
+        "CI 仍保留已 EOL 的 3.8 作业: {0}".format(sorted(combos))
+    )
+
+
+def test_runtime_floor_is_declared_consistently():
+    """pyproject / README 的运行时下限必须一致（防三处口径漂移）。"""
+    import re
+
+    with open(os.path.join(ROOT, "pyproject.toml"), "r", encoding="utf-8", newline="") as handle:
+        pyproject = handle.read()
+    with open(os.path.join(ROOT, "README.md"), "r", encoding="utf-8", newline="") as handle:
+        readme = handle.read()
+    match = re.search(r'requires-python\s*=\s*">=(\d+)\.(\d+)"', pyproject)
+    assert match, "pyproject 缺少 requires-python"
+    floor = "{0}.{1}".format(match.group(1), match.group(2))
+    assert floor == "3.12", "本迭代（D-45）口径为 3.12，实际 {0}".format(floor)
+    assert "Python {0}+".format(floor) in readme, "README 未标注 Python {0}+".format(floor)
+    # 依赖上界也必须落进 pyproject（gui / build extras）。
+    assert "PySide6>=6.12,<7" in pyproject.replace(" ", "")
+    assert "pyinstaller>=6.22,<7" in pyproject.replace(" ", "")
 
 
 def test_ci_installs_dev_extra():
